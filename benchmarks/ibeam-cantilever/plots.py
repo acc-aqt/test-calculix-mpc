@@ -21,11 +21,12 @@ from analytical import (
     timoshenko_deflection_at,
 )
 from benchmark_parameters import IPE200_CANTILEVER, MESH_LEVELS, BenchmarkParameters
+from deck import generate_deck
 from figure_data import FigureSeries, MeshLevelResults, figure_series
 from frd import read_frd
 from renders import deformed_figure, meshes_figure, model_figure, stress_figure
 from report import TOLERANCE_PERCENT
-from runner import read_benchmark_result, result_files
+from runner import benchmark_result, result_files
 
 HERE = Path(__file__).resolve().parent
 LEVELS_BY_NAME = {level.name: level for level in MESH_LEVELS}
@@ -87,8 +88,9 @@ def main(argv: list[str] | None = None) -> int:
     results = []
     for level in levels:
         print(f"Reading mesh level {level.name} ...", flush=True)
-        result = read_benchmark_result(level, params, args.work_dir)
-        frd = read_frd(result_files(level, args.work_dir)[0])
+        frd_path, dat_path = result_files(level, args.work_dir)
+        frd = read_frd(frd_path)
+        result = benchmark_result(level, params, generate_deck(params, level), frd, dat_path)
         results.append(MeshLevelResults(result, frd, figure_series(result, frd, params)))
 
     figures_dir = args.output_dir / "figures"

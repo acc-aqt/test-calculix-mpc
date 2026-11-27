@@ -23,6 +23,7 @@ from deck import (
 )
 from figure_data import MeshLevelResults
 from frd import FrdResults
+from runner import von_mises
 
 TIP_DROP_FRACTION = 0.1
 RENDER_SIZE = (2400, 1600)
@@ -56,7 +57,7 @@ def beam_grid(frd: FrdResults) -> pv.UnstructuredGrid:
     grid.point_data["u"] = u
     grid.point_data["u_y"] = u[:, 1]
     grid.point_data["sigma_xx"] = stress[:, 0]
-    grid.point_data["von_mises"] = _von_mises(stress)
+    grid.point_data["von_mises"] = von_mises(stress)
     return grid
 
 
@@ -405,9 +406,3 @@ def _cells_where(grid: pv.UnstructuredGrid, keep, axis: int = 0) -> pv.Unstructu
     """The cells whose centre coordinate on the axis (default x) passes keep."""
     centres = grid.cell_centers().points[:, axis]
     return grid.extract_cells(np.flatnonzero(keep(centres)))
-
-
-def _von_mises(stress: np.ndarray) -> np.ndarray:
-    sxx, syy, szz, sxy, syz, szx = stress.T
-    normal = (sxx - syy) ** 2 + (syy - szz) ** 2 + (szz - sxx) ** 2
-    return np.sqrt(normal / 2 + 3 * (sxy**2 + syz**2 + szx**2))
