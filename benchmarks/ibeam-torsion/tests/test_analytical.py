@@ -97,3 +97,15 @@ def test_warping_stress_changes_sign_across_the_web_and_between_the_flanges():
     assert warping_stress_at(IPE200_TORSION, x, -h_m / 2, b / 2) > 0
     assert warping_stress_at(IPE200_TORSION, x, -h_m / 2, -b / 2) < 0
     assert warping_stress_at(IPE200_TORSION, x, h_m / 2, 0.0) == 0.0
+
+
+def test_end_corrected_torsion_constant_for_information():
+    # Flanges: 2 x 100 x 8.5^3 x (1 - 0.63 x 8.5/100) = 122825 x 0.946450 = 116247.7
+    # Web: 183 x 5.6^3 x (1 - 0.63 x 5.6/183) = 32137.7 x 0.980721 = 31518.2
+    # (116247.7 + 31518.2) / 3 = 49255.3 mm^4, 4.6 % below the thin-walled J
+    assert SOLUTION.end_corrected_torsion_constant == pytest.approx(49_255.3, rel=1e-6)
+
+
+def test_vlasov_tip_twist_with_the_end_corrected_torsion_constant_for_information():
+    # lambda L = 3.6232 with J = 49255.3; T/(GJ) x (L - tanh(lambda L)/lambda) = 0.27313 rad
+    assert SOLUTION.end_corrected_tip_twist == pytest.approx(0.27313, rel=1e-4)

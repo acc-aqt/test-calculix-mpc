@@ -42,6 +42,10 @@ class AnalyticalSolution:
     """Magnitude E·ω·φ''(0), information only."""
     midspan_st_venant_shear_stress: float
     """G·t_f·φ'(L/2) at the flange outer surface, information only."""
+    end_corrected_torsion_constant: float
+    """J with the end correction (1 − 0.63·t/b) on each plate, information only."""
+    end_corrected_tip_twist: float
+    """Vlasov φ(L) with the end-corrected J, information only."""
 
 
 def analytical_solution(params: BenchmarkParameters) -> AnalyticalSolution:
@@ -50,6 +54,7 @@ def analytical_solution(params: BenchmarkParameters) -> AnalyticalSolution:
     g, j, flange_second_moment, h_m, warping_constant, lam = _section_properties(params)
     omega = h_m * s.flange_width / 4
     length = params.length
+    end_corrected_j = _end_corrected_torsion_constant(params)
     return AnalyticalSolution(
         shear_modulus=g,
         torsion_constant=j,
@@ -66,6 +71,8 @@ def analytical_solution(params: BenchmarkParameters) -> AnalyticalSolution:
         midspan_st_venant_shear_stress=float(
             g * s.flange_thickness * twist_rate_at(params, length / 2)
         ),
+        end_corrected_torsion_constant=end_corrected_j,
+        end_corrected_tip_twist=_vlasov_tip_twist(params, g, end_corrected_j, warping_constant),
     )
 
 
@@ -104,6 +111,29 @@ def warping_stress_at(
     """
     e = params.material.youngs_modulus
     return -e * y * z * twist_curvature_at(params, x)
+
+
+def _end_corrected_torsion_constant(params: BenchmarkParameters) -> float:
+    """(2·b·t_f³·(1 − 0.63·t_f/b) + h_w·t_w³·(1 − 0.63·t_w/h_w)) / 3, h_w = h − 2t_f."""
+    s = params.section
+    web_height = s.height - 2 * s.flange_thickness
+    flanges = (
+        2
+        * s.flange_width
+        * s.flange_thickness**3
+        * (1 - 0.63 * s.flange_thickness / s.flange_width)
+    )
+    web = web_height * s.web_thickness**3 * (1 - 0.63 * s.web_thickness / web_height)
+    return (flanges + web) / 3
+
+
+def _vlasov_tip_twist(
+    params: BenchmarkParameters, g: float, j: float, warping_constant: float
+) -> float:
+    """φ(L) = T/(GJ)·(L − tanh(λL)/λ) for a given J."""
+    lam = np.sqrt(g * j / (params.material.youngs_modulus * warping_constant))
+    length = params.length
+    return float(params.torque / (g * j) * (length - np.tanh(lam * length) / lam))
 
 
 def _curve_constants(params: BenchmarkParameters) -> tuple[float, float, float]:
