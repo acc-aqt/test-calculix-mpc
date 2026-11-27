@@ -1,7 +1,7 @@
 """Run the benchmark at the selected mesh levels and write the markdown report.
 
-Exit codes: 0 report written (the verdict is not evaluated yet), 2 ccx missing or failed
-(no report is written).
+Exit codes: 0 report written (the verdict is not evaluated yet), 2 ccx missing or failed, or
+a sanity guard tripped (no report is written).
 """
 
 import argparse

@@ -24,4 +24,6 @@ def result(level, stress_ratio=1.0, element_type=C3D20R):
         ),
         integration_point_at_d=(2062.845, 60.565, 236.6025),
         integration_point_stress_yy_at_d=-3.8198,
+        reaction_z_on_ee=5.448647e6,
+        mesh_volume=3.269188e9,
     )

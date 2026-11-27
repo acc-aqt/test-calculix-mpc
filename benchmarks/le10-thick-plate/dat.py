@@ -1,5 +1,5 @@
-"""Minimal reader for *NODE PRINT displacement and *EL PRINT integration-point tables in a
-CalculiX .dat file.
+"""Minimal reader for *NODE PRINT displacement and reaction-total tables and *EL PRINT
+integration-point tables in a CalculiX .dat file.
 
 ccx writes nodal values, extrapolated from the integration points, to the .frd; the
 integration-point values themselves are only printed to the .dat.
@@ -11,6 +11,7 @@ from pathlib import Path
 from frd import NodalValues
 
 _HEADER = re.compile(r"displacements \(vx,vy,vz\) for set (\S+) and time")
+_TOTAL_FORCE_HEADER = re.compile(r"total force \(fx,fy,fz\) for set (\S+) and time")
 _ELEMENT_HEADER = re.compile(r"^ (stresses|global coordinates) \(elem, integ\.pnt\.,")
 
 IntegrationPointValues = dict[tuple[int, int], tuple[float, ...]]
@@ -56,4 +57,20 @@ def read_printed_integration_points(path: Path) -> dict[str, IntegrationPointVal
                     continue
                 key = (int(fields[0]), int(fields[1]))
                 table[key] = tuple(float(v) for v in fields[2:])
+    return results
+
+
+def read_printed_total_forces(path: Path) -> dict[str, tuple[float, float, float]]:
+    """Printed *NODE PRINT, TOTALS=ONLY reaction totals (fx, fy, fz) of the last step, keyed by
+    node set name (upper case)."""
+    results: dict[str, tuple[float, float, float]] = {}
+    name: str | None = None
+    with path.open() as f:
+        for line in f:
+            if header := _TOTAL_FORCE_HEADER.search(line):
+                name = header.group(1)
+            elif name is not None and line.strip():
+                fx, fy, fz = (float(v) for v in line.split())
+                results[name] = (fx, fy, fz)
+                name = None
     return results
