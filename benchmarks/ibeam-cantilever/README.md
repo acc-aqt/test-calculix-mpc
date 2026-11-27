@@ -175,7 +175,9 @@ Differences, and why they are not bugs in the benchmark:
 
 - **`mesh_check` verdict is REVIEW**, because it finds 2 parts (the C3D20R mesh and the
   `DCOUP3D` element on the reference node) and no connecting card. `*DISTRIBUTING COUPLING` does
-  join them; the MCP doesn't count it as a connecting card. Everything else in the check is clean.
+  join them; the MCP doesn't count it as a connecting card (see
+  [`docs/upstream/calculix-mcp-rs.md`](../../docs/upstream/calculix-mcp-rs.md)). Everything else
+  in the check is clean.
   The worst aspect ratio is 17.9 (50 mm long elements, 2.8 mm across half the web thickness).
 - **`REFNODE` has no displacement** in `frd_query_set`, because ccx doesn't write the reference
   node to the `.frd` (the same reason the Python tool reads it from the `.dat`). The MCP can't
