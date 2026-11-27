@@ -6,6 +6,9 @@ from pathlib import Path
 
 import numpy as np
 import pyvista as pv
+from matplotlib import colormaps
+from matplotlib.cm import ScalarMappable
+from matplotlib.colors import ListedColormap, Normalize
 from matplotlib.figure import Figure
 from matplotlib.lines import Line2D
 from matplotlib.patches import Patch, Polygon
@@ -13,7 +16,7 @@ from matplotlib.patches import Patch, Polygon
 from benchmark_parameters import BenchmarkParameters, Ellipse
 from deck import LINE_EE, POINT_D
 from figure_data import MeshLevelResults
-from frd import FrdResults
+from frd import SYY, FrdResults
 from palette import BLUE, EDGES, GREEN, INK, ORANGE, SECONDARY_INK, STEEL
 
 RENDER_SIZE = (2400, 1600)
@@ -26,6 +29,16 @@ FROM_THE_HOLE = (-1.0, -1.2, 1.1)
 """View direction that shows the top face, both symmetry faces and the hole."""
 FROM_OUTSIDE = (1.0, 1.1, 0.7)
 """View direction that shows the top face and the outer face."""
+FROM_THE_Y0_FACE = (0.25, -1.0, 0.3)
+"""View direction that shows the y = 0 symmetry face, with D at its hole end."""
+STRESS_MAP = "RdBu_r"
+STRESS_LIMIT = 10.0
+"""σ_yy colour range in MPa: about twice the target, so D's value reads clearly."""
+DISPLACEMENT_MAP = ListedColormap(colormaps["Blues"](np.linspace(1.0, 0.15, 256)))
+"""Single-hue sequential, darkest at the most negative u_z and never white at u_z = 0."""
+DEFORMATION_SHARE = 0.05
+"""The renders exaggerate the displacement so its largest value is about this share of the
+outer semi-axis a_o."""
 
 # VTK QUADRATIC_HEXAHEDRON: corners 0-7, then the midside nodes of these edges at 8-19.
 _VTK_EDGES = (
@@ -37,14 +50,19 @@ Draw = Callable[[pv.Plotter], None]
 
 
 def plate_grid(frd: FrdResults) -> pv.UnstructuredGrid:
-    """The solved mesh as 20-node hexahedra."""
+    """The solved mesh as 20-node hexahedra, with point data u (displacement), u_z and
+    sigma_yy."""
     ids = sorted(frd.nodes)
     index = {node: n for n, node in enumerate(ids)}
     cells = [[index[node] for node in vtk_hexahedron(c)] for c in frd.elements.values()]
-    return pv.UnstructuredGrid(
+    grid = pv.UnstructuredGrid(
         {pv.CellType.QUADRATIC_HEXAHEDRON: np.array(cells)},
         np.array([frd.nodes[node] for node in ids]),
     )
+    grid.point_data["u"] = np.array([frd.nodal_results["DISP"][node][:3] for node in ids])
+    grid.point_data["u_z"] = grid.point_data["u"][:, 2]
+    grid.point_data["sigma_yy"] = np.array([frd.nodal_results["STRESS"][node][SYY] for node in ids])
+    return grid
 
 
 def vtk_hexahedron(frd_nodes: tuple[int, ...]) -> tuple[int, ...]:
@@ -147,6 +165,132 @@ def boundary_conditions_figure(
         "the plate. Top right: seen from outside, with line EE′. Bottom: the top face in plan, "
         "z up out of the page."
     )
+
+
+def stress_figure(
+    levels: Sequence[MeshLevelResults], params: BenchmarkParameters, path: Path
+) -> str:
+    level = levels[-1]
+    name = level.result.mesh_level.name
+    grid = plate_grid(level.frd)
+    factor = deformation_scale(grid, params)
+    deformed = grid.warp_by_vector("u", factor=factor)
+    syy = grid.point_data["sigma_yy"]
+    clim = (-STRESS_LIMIT, STRESS_LIMIT)
+    (d,) = level.deck.node_sets[POINT_D]
+    point_d = np.array(level.frd.nodes[d]) + factor * np.array(
+        level.frd.nodal_results["DISP"][d][:3]
+    )
+    beyond = grid.points[np.abs(syy) > STRESS_LIMIT]
+    peak = grid.points[np.argmax(np.abs(syy))]
+
+    def view(direction: tuple[float, float, float]) -> Draw:
+        def draw(plotter: pv.Plotter) -> None:
+            _add_field(plotter, deformed, "sigma_yy", STRESS_MAP, clim)
+            plotter.add_points(point_d, color=INK, point_size=40, render_points_as_spheres=True)
+            _look(plotter, direction)
+
+        return draw
+
+    fig = Figure(figsize=(8, 3.4), layout="constrained")
+    top_view, side_view = fig.subplots(1, 2)
+    _show(top_view, _render(view(FROM_THE_HOLE)), "Seen from the hole side")
+    _show(side_view, _render(view(FROM_THE_Y0_FACE)), "The y = 0 face, through the thickness")
+    _colorbar(fig, [top_view, side_view], STRESS_MAP, clim, "σ_yy (MPa)", extend="both")
+    fig.savefig(path)
+
+    return (
+        f"Nodal σ_yy on the {name} mesh, drawn on the plate deformed {factor:g} times true "
+        "scale, with a diverging colour map centred on zero; the black dot is point D. Left: "
+        "from the hole side above the plate. Right: the y = 0 symmetry face, with the hole "
+        "face on its left and D at their shared top corner. Around the hole the plate bends "
+        "over the support: σ_yy is compressive (blue) on the loaded top face at D, "
+        f"{_signed(level.result.stress_yy_at_d, 2)} MPa, and tensile (red) on the bottom "
+        "face beneath it. Towards the outer face, which is held in its plane, the bending "
+        "reverses, tension on the top and compression on the bottom. The specks at the right "
+        "end of the y = 0 face, at mid-thickness on the outer face, are the singular support "
+        f"line EE′. The colour range is ±{STRESS_LIMIT:g} MPa; only nodes on the top and "
+        f"bottom outer edges with y ≥ {beyond[:, 1].min():.0f} mm go beyond it, up to "
+        f"{_signed(syy[np.argmax(np.abs(syy))], 1)} MPa at (x, y, z) = ({peak[0]:g}, "
+        f"{peak[1]:g}, {_signed(peak[2], 0, plus=True)}) mm."
+    )
+
+
+def displacement_figure(
+    levels: Sequence[MeshLevelResults], params: BenchmarkParameters, path: Path
+) -> str:
+    level = levels[-1]
+    name = level.result.mesh_level.name
+    grid = plate_grid(level.frd)
+    factor = deformation_scale(grid, params)
+    deformed = grid.warp_by_vector("u", factor=factor)
+    uz = grid.point_data["u_z"]
+    clim = (float(uz.min()), 0.0)
+    lowest = grid.points[np.argmin(uz)]
+
+    def view(direction: tuple[float, float, float]) -> Draw:
+        def draw(plotter: pv.Plotter) -> None:
+            _add_field(plotter, deformed, "u_z", DISPLACEMENT_MAP, clim)
+            _look(plotter, direction)
+
+        return draw
+
+    fig = Figure(figsize=(8, 3.4), layout="constrained")
+    hole_view, outside_view = fig.subplots(1, 2)
+    _show(hole_view, _render(view(FROM_THE_HOLE)), "Seen from the hole side")
+    _show(outside_view, _render(view(FROM_OUTSIDE)), "Seen from outside")
+    _colorbar(fig, [hole_view, outside_view], DISPLACEMENT_MAP, clim, "u_z (mm)")
+    fig.savefig(path)
+
+    return (
+        f"Out-of-plane displacement u_z on the {name} mesh, drawn on the plate deformed "
+        f"{factor:g} times true scale, darker where it moves further down. The plate rests "
+        "on line EE′ at the outer edge, so u_z is zero on that line and the pressure pushes "
+        f"the plate down towards the hole, most at the hole face on the y axis near A: "
+        f"{_signed(uz.min(), 3)} mm at (x, y, z) = ({lowest[0]:g}, {lowest[1]:g}, "
+        f"{_signed(lowest[2], 1, plus=True)}) mm. Left: from the hole "
+        "side above the plate. Right: from outside, with the outer face."
+    )
+
+
+def deformation_scale(grid: pv.UnstructuredGrid, params: BenchmarkParameters) -> float:
+    """A round 1, 2 or 5 × 10^n factor that draws the largest displacement at about
+    DEFORMATION_SHARE of a_o."""
+    largest = float(np.linalg.norm(grid.point_data["u"], axis=1).max())
+    wanted = DEFORMATION_SHARE * params.outer.semi_axis_x / largest
+    decade = 10 ** np.floor(np.log10(wanted))
+    return float(max(step * decade for step in (1, 2, 5) if step * decade <= wanted))
+
+
+def _add_field(plotter: pv.Plotter, grid, scalars: str, cmap, clim) -> None:
+    plotter.add_mesh(
+        _surface(grid),
+        scalars=scalars,
+        cmap=cmap,
+        clim=clim,
+        ambient=0.5,
+        diffuse=0.6,
+        smooth_shading=True,
+        split_sharp_edges=True,
+        show_scalar_bar=False,
+    )
+
+
+def _colorbar(fig, axes, cmap, clim, label: str, extend: str = "neither") -> None:
+    fig.colorbar(
+        ScalarMappable(norm=Normalize(*clim), cmap=cmap),
+        ax=axes,
+        orientation="horizontal",
+        label=label,
+        shrink=0.6,
+        aspect=30,
+        extend=extend,
+    )
+
+
+def _signed(value: float, digits: int, plus: bool = False) -> str:
+    text = f"{value:+.{digits}f}" if plus else f"{value:.{digits}f}"
+    return text.replace("-", "−")
 
 
 def _draw_plan(ax, params: BenchmarkParameters) -> None:
