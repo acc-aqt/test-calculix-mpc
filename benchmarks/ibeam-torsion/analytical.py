@@ -89,9 +89,12 @@ def analytical_solution(params: BenchmarkParameters) -> AnalyticalSolution:
     )
 
 
-def twist_at(params: BenchmarkParameters, x: Position) -> Position:
-    """Vlasov twist φ(x) in rad."""
-    scale, lam, length = _curve_constants(params)
+def twist_at(
+    params: BenchmarkParameters, x: Position, torsion_constant: float | None = None
+) -> Position:
+    """Vlasov twist φ(x) in rad. torsion_constant replaces the thin-walled J, e.g. with the
+    end-corrected one for an information curve."""
+    scale, lam, length = _curve_constants(params, torsion_constant)
     warping = (np.sinh(lam * length) - np.sinh(lam * (length - x))) / (lam * np.cosh(lam * length))
     return scale * (x - warping)
 
@@ -102,9 +105,11 @@ def twist_rate_at(params: BenchmarkParameters, x: Position) -> Position:
     return scale * (1 - np.cosh(lam * (length - x)) / np.cosh(lam * length))
 
 
-def twist_curvature_at(params: BenchmarkParameters, x: Position) -> Position:
-    """φ''(x) in rad/mm²."""
-    scale, lam, length = _curve_constants(params)
+def twist_curvature_at(
+    params: BenchmarkParameters, x: Position, torsion_constant: float | None = None
+) -> Position:
+    """φ''(x) in rad/mm², optionally with another torsion constant as for twist_at."""
+    scale, lam, length = _curve_constants(params, torsion_constant)
     return scale * lam * np.sinh(lam * (length - x)) / np.cosh(lam * length)
 
 
@@ -115,15 +120,19 @@ def st_venant_twist_at(params: BenchmarkParameters, x: Position) -> Position:
 
 
 def warping_stress_at(
-    params: BenchmarkParameters, x: Position, y: Position, z: Position
+    params: BenchmarkParameters,
+    x: Position,
+    y: Position,
+    z: Position,
+    torsion_constant: float | None = None,
 ) -> Position:
     """σ_w = −E·ω·φ''(x) at a flange mid-plane point, with sectorial coordinate ω = y·z.
 
     The sign follows from T about +x: the top flange bends laterally towards +z, which
-    compresses its +z edge.
+    compresses its +z edge. torsion_constant replaces the thin-walled J as for twist_at.
     """
     e = params.material.youngs_modulus
-    return -e * y * z * twist_curvature_at(params, x)
+    return -e * y * z * twist_curvature_at(params, x, torsion_constant)
 
 
 def _end_corrected_torsion_constant(params: BenchmarkParameters) -> float:
@@ -160,9 +169,14 @@ def _vlasov_quarter_span_warping_stress(
     return float(e * omega * curvature)
 
 
-def _curve_constants(params: BenchmarkParameters) -> tuple[float, float, float]:
-    """T/(GJ), λ and L."""
-    g, j, _, _, _, lam = _section_properties(params)
+def _curve_constants(
+    params: BenchmarkParameters, torsion_constant: float | None = None
+) -> tuple[float, float, float]:
+    """T/(GJ), λ and L, with the thin-walled J unless another torsion constant is given."""
+    g, j, _, _, warping_constant, lam = _section_properties(params)
+    if torsion_constant is not None:
+        j = torsion_constant
+        lam = float(np.sqrt(g * j / (params.material.youngs_modulus * warping_constant)))
     return params.torque / (g * j), lam, params.length
 
 

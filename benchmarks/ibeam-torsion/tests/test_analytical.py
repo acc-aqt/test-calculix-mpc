@@ -121,3 +121,13 @@ def test_quarter_span_warping_stress_with_the_end_corrected_torsion_constant_for
     # lambda = 1.20772e-3 /mm with J = 49255.3; E omega T/(GJ) lambda sinh(0.75 lambda L) /
     # cosh(lambda L) = 61.37 MPa, 4.6 % above the thin-walled target
     assert SOLUTION.end_corrected_quarter_span_warping_stress == pytest.approx(61.373, rel=1e-4)
+
+
+def test_vlasov_curves_with_the_end_corrected_torsion_constant_reach_the_information_values():
+    # The figures draw the end-corrected Vlasov curves as information lines; at the tip and at
+    # the top flange tip z = -b/2 at L/4 they give the end-corrected values above.
+    j = SOLUTION.end_corrected_torsion_constant
+    assert twist_at(IPE200_TORSION, 0.0, torsion_constant=j) == pytest.approx(0.0, abs=1e-12)
+    assert twist_at(IPE200_TORSION, L, torsion_constant=j) == pytest.approx(0.27313, rel=1e-4)
+    stress = warping_stress_at(IPE200_TORSION, L / 4, 95.75, -50.0, torsion_constant=j)
+    assert stress == pytest.approx(61.373, rel=1e-4)
