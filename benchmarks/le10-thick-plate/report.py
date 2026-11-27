@@ -13,6 +13,8 @@ ADR = "[ADR 0004](../../docs/adr/0004-published-reference-value.md)"
 REFINEMENT_RATIO = 2
 TOLERANCE_PERCENT = 3.0
 RICHARDSON_FLAG_PERCENT = 2.0
+LOW_ORDER = 1.0
+"""Below this observed order the Richardson estimate is called out as not a reliable limit."""
 
 
 class Verdict(Enum):
@@ -213,6 +215,13 @@ def _richardson_lines(results: Sequence[BenchmarkResult]) -> list[str]:
         "published value, for information only.",
         "",
     ]
+    if order is not None and order < LOW_ORDER:
+        lines += [
+            f"The observed order p = {order:.2f} is low, so the sequence is not yet in its "
+            "asymptotic range and the Richardson estimate is not a reliable limit. It is "
+            "information only.",
+            "",
+        ]
     if estimate is not None and abs(error) > RICHARDSON_FLAG_PERCENT:
         lines += [
             f"**Flagged**: the Richardson estimate is {abs(error):.2f} % from the published "

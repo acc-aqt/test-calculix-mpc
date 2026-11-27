@@ -195,3 +195,16 @@ def test_c3d20_values_never_count():
 def test_c3d20_levels_alone_give_no_verdict():
     assert verdict(c3d20_levels(1.5, 1.2, 1.0)) is None
     assert verdict([result(COARSE, 1.5), result(MEDIUM, 1.2), *c3d20_levels(1.5, 1.2, 1.0)]) is None
+
+
+def test_report_says_a_low_observed_order_makes_the_richardson_estimate_unreliable():
+    # Prototype steps 0.037 and 0.025 MPa: p = ln(0.037 / 0.025) / ln 2 = 0.57.
+    text = render_report(levels(5.424 / 5.38, 5.387 / 5.38, 5.362 / 5.38), LE10, "V")
+    assert "| Observed order p (information) | 0.57 | – |" in text
+    assert "p = 0.57 is low" in text and "not a reliable limit" in text
+
+
+def test_report_does_not_call_a_second_order_richardson_estimate_unreliable():
+    text = render_report(levels(1.05, 1.0125, 1.003125), LE10, "V")
+    assert "| Observed order p (information) | 2.00 | – |" in text
+    assert "not a reliable limit" not in text
