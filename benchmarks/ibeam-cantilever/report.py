@@ -3,6 +3,7 @@
 from collections.abc import Sequence
 from enum import Enum
 
+from analytical import AnalyticalSolution, analytical_solution
 from benchmark_parameters import FINE, BenchmarkParameters
 from runner import BenchmarkResult
 
@@ -35,9 +36,11 @@ def verdict_text(evaluated: Verdict | None) -> str:
 def render_report(
     results: Sequence[BenchmarkResult], params: BenchmarkParameters, ccx_version: str
 ) -> str:
-    a = results[0].analytical
+    analytical = analytical_solution(params)
     verdict_line = verdict_text(verdict(results))
-    shear_share = (a.timoshenko_deflection / a.euler_bernoulli_deflection - 1) * 100
+    shear_share = (
+        analytical.timoshenko_deflection / analytical.euler_bernoulli_deflection - 1
+    ) * 100
     lines = [
         "# IPE 200 cantilever benchmark report",
         "",
@@ -47,7 +50,7 @@ def render_report(
         f"- Verdict: **{verdict_line}**",
         "",
         *_parameters_section(params),
-        *_targets_section(results[0]),
+        *_targets_section(analytical),
         *_convergence_section(results),
         "## Verdict",
         "",
@@ -68,8 +71,9 @@ def render_report(
         "flange is compressive. That is a sign slip in the spec; the values here are as computed.",
         "- **Root peak von Mises** is the largest nodal von Mises stress on the root face. It is "
         "for information only, because the fixed end disturbs it (St-Venant). Beam theory gives "
-        f"P·L·c/I = {2 * a.midspan_stress:.2f} MPa there. It grows with refinement, as expected at "
-        "the stress singularity where the fixed face meets the free surfaces.",
+        f"P·L·c/I = {2 * analytical.midspan_stress:.2f} MPa there. It grows as the mesh level "
+        "gets finer, as expected at the stress singularity where the root face meets the free "
+        "surfaces.",
         "- **Spec figures.** Spec #1 quotes I ≈ 1.943×10⁷ mm⁴, δ_EB ≈ 22.06 mm and a shear "
         "contribution of about 5 %. Those belong to the rolled section with fillet radii. The "
         "no-fillet section modelled here gives the values above, and shear adds about "
@@ -97,8 +101,7 @@ def _parameters_section(params: BenchmarkParameters) -> list[str]:
     ]
 
 
-def _targets_section(result: BenchmarkResult) -> list[str]:
-    a = result.analytical
+def _targets_section(a: AnalyticalSolution) -> list[str]:
     return [
         "## Section properties and targets",
         "",
@@ -138,11 +141,7 @@ def _convergence_section(results: Sequence[BenchmarkResult]) -> list[str]:
             f"| {r.midspan_bottom_sxx_width_mean:+.4f} | {r.midspan_bottom_stress_error:+.3f} "
             f"| {r.root_peak_von_mises:.2f} |"
         )
-    levels = ", ".join(
-        f"{r.mesh_level.name} {r.mesh_level.flange_thickness_divisions}/"
-        f"{r.mesh_level.web_height_divisions}/{r.mesh_level.length_divisions}"
-        for r in results
-    )
+    levels = ", ".join(r.mesh_level.label for r in results)
     lines += [
         "",
         "Mesh levels, as elements through the flange thickness / along the web height / along "

@@ -33,7 +33,7 @@ The nodes on the outer surfaces of the top and bottom flanges at x = L/2, where 
 _Avoid_: Stress nodes, midspan nodes
 
 **Mesh level**:
-One of three named mesh refinements (coarse, medium, fine), each defined by the element counts through the flange thickness, along the web height and along the length.
+One of three named meshes (coarse, medium, fine), each defined by the element counts through the flange thickness, along the web height and along the length.
 _Avoid_: Mesh density, refinement, resolution
 
 ## Analytical solution

@@ -80,7 +80,8 @@ finish the job. On exit code 2 the command prints the `*ERROR` lines and writes 
   to it as a check on the coupling. Midspan σ_xx is averaged across the full flange width on the
   outer flange surface at x = L/2. Stresses keep their sign: the top flange is in tension and the
   bottom flange in compression. Spec #1 has these signs the wrong way round. The root peak von
-  Mises stress is for information only and grows with refinement (fixed-end singularity).
+  Mises stress is for information only and grows as the mesh level gets finer (a
+  singularity where the root face meets the free surfaces).
 - **Verdict** is PASS when the fine mesh is within ±2 % of the Timoshenko deflection and of the
   midspan stress at both flanges.
 

@@ -53,6 +53,14 @@ class MeshLevel:
     web_height_divisions: int
     length_divisions: int
 
+    @property
+    def label(self) -> str:
+        """Name and divisions, e.g. "coarse 1/4/30"."""
+        return (
+            f"{self.name} {self.flange_thickness_divisions}/{self.web_height_divisions}/"
+            f"{self.length_divisions}"
+        )
+
 
 COARSE = MeshLevel(
     "coarse", flange_thickness_divisions=1, web_height_divisions=4, length_divisions=30
