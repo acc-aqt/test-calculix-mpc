@@ -106,3 +106,8 @@ def test_report_explains_the_expected_gap_to_thin_walled_theory():
 def test_report_links_to_the_coupling_adr():
     text = render_report([result(COARSE)], IPE200_TORSION, "Version 2.24")
     assert "0003" in text
+
+
+def test_report_links_to_the_figures_page():
+    text = render_report([result(COARSE)], IPE200_TORSION, "Version 2.24")
+    assert "](FIGURES.md)" in text
