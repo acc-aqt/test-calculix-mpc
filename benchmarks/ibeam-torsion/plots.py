@@ -25,6 +25,7 @@ from report import TIP_TWIST_TOLERANCE_PERCENT, WARPING_STRESS_TOLERANCE_PERCENT
 from runner import benchmark_result, result_files
 
 HERE = Path(__file__).resolve().parent
+FOLLOW_UP = "[#29](https://github.com/acc-aqt/test-calculix-mpc/issues/29)"
 LEVELS_BY_NAME = {level.name: level for level in MESH_LEVELS}
 
 LEVEL_STYLES = {
@@ -148,7 +149,8 @@ def twist_figure(
         f"with the end-corrected J = {j_corrected:.0f} mm⁴, which ends at "
         f"{a.end_corrected_tip_twist:.4f} rad. The FE gap follows it up to about two thirds of "
         "the length and then grows past it, over the stretch where figure 3 shows the "
-        "disturbance from the load introduction."
+        "disturbance from the load introduction (follow-up "
+        f"{FOLLOW_UP})."
     )
 
 
@@ -290,7 +292,8 @@ def flange_tip_stress_figure(
         f"({warping_stress_at(params, 2500.0, y, z):.1f} MPa at x = 2500, FE "
         f"{fine.flange_tip_sxx[station_2500][0]:.1f}), and it returns near zero only at the "
         "tip face, which is free to warp. All three mesh levels agree, so it is not a "
-        "discretisation error. The likely cause is the load introduction: the distributing "
+        "discretisation error. The likely cause, not proven, is the load introduction: the "
+        "distributing "
         "coupling spreads the "
         "torque in proportion to the distance from the axis, which puts most of it into the "
         "flanges as lateral shear, while Vlasov carries it almost entirely as St-Venant shear "
@@ -298,7 +301,8 @@ def flange_tip_stress_figure(
         "but decays over a length of the order of 1/λ: on the "
         f"{levels[-1].result.mesh_level.name} level the FE stress is more than 2 % above the "
         f"end-corrected curve from x = {parting:.0f} mm on, {length - parting:.0f} mm from the "
-        f"tip. At x = L/4 it is {quarter_vs_corrected:+.2f} % from the end-corrected curve."
+        f"tip. x = L/4 is clear of it: there the FE stress is {quarter_vs_corrected:+.2f} % "
+        f"from the end-corrected curve. Follow-up: {FOLLOW_UP}."
     )
 
 
