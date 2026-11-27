@@ -60,7 +60,7 @@ def test_coarse_twist_curve_runs_from_zero_at_the_root_to_the_tip(coarse):
 
 @needs_ccx
 def test_midspan_twist_is_within_three_percent_of_vlasov(coarse):
-    # Away from the tip zone the gap to thin-walled theory is smaller (prototype: +2.4 %).
+    # The gap to the thin-walled J grows towards the tip; at midspan it is +2.4 % (prototype).
     midspan = dict(coarse.twist_curve)[IPE200_TORSION.length / 2]
     assert midspan == pytest.approx(0.097760, rel=0.03)
 
