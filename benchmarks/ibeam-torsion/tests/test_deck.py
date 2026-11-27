@@ -3,7 +3,13 @@ import subprocess
 import pytest
 
 from benchmark_parameters import COARSE, IPE200_TORSION
-from deck import BOTTOM_FLANGE_CENTRE_LINE, TOP_FLANGE_CENTRE_LINE, generate_deck
+from deck import (
+    BOTTOM_FLANGE_CENTRE_LINE,
+    FLANGE_TIP_EDGES,
+    MIDSPAN_FLANGE_SURFACES,
+    TOP_FLANGE_CENTRE_LINE,
+    generate_deck,
+)
 from frd import read_frd
 from runner import JOB_NAME, find_ccx, run_ccx
 
@@ -52,3 +58,22 @@ def test_flange_centre_lines_lie_on_the_flange_mid_planes_over_the_web(coarse_de
         coordinates = [coarse_frd.nodes[n] for n in coarse_deck.node_sets[name]]
         assert all(c[1] == pytest.approx(y) and abs(c[2]) <= 2.8 for c in coordinates)
         assert {c[0] for c in coordinates} >= {0.0, 1500.0, 3000.0}
+
+
+def test_flange_tip_edges_run_through_the_flange_thickness_at_quarter_span(coarse_deck, coarse_frd):
+    # Top -z, top +z, bottom -z, bottom +z; t_f = 8.5 mm, b/2 = 50 mm, L/4 = 750 mm.
+    corners = [(1, -1), (1, 1), (-1, -1), (-1, 1)]
+    assert len(FLANGE_TIP_EDGES) == 4
+    for name, (y_sign, z_sign) in zip(FLANGE_TIP_EDGES, corners, strict=True):
+        coordinates = [coarse_frd.nodes[n] for n in coarse_deck.node_sets[name]]
+        assert all(c[0] == 750.0 and c[2] == 50.0 * z_sign for c in coordinates)
+        assert sorted(y_sign * c[1] for c in coordinates) == pytest.approx([91.5, 100.0])
+
+
+def test_midspan_flange_surfaces_lie_at_the_outstand_centres(coarse_deck, coarse_frd):
+    # Outer surfaces y = +-100 mm at x = L/2; outstand centres z = +-(50 + 2.8)/2 = +-26.4 mm.
+    top, bottom = MIDSPAN_FLANGE_SURFACES
+    for name, y in ((top, 100.0), (bottom, -100.0)):
+        coordinates = [coarse_frd.nodes[n] for n in coarse_deck.node_sets[name]]
+        assert sorted(c[2] for c in coordinates) == pytest.approx([-26.4, 26.4])
+        assert all(c[0] == 1500.0 and c[1] == y for c in coordinates)

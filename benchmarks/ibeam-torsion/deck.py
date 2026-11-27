@@ -21,6 +21,12 @@ TIP_SURFACE = "TIPSURF"
 REFERENCE_NODE = "REFNODE"
 TOP_FLANGE_CENTRE_LINE = "TOPLINE"
 BOTTOM_FLANGE_CENTRE_LINE = "BOTLINE"
+FLANGE_TIP_EDGES = ("TIPTOPNZ", "TIPTOPPZ", "TIPBOTNZ", "TIPBOTPZ")
+"""The flange-tip edges at x = L/4 through the flange thickness: top flange at z = −b/2 and
++b/2, then bottom flange at z = −b/2 and +b/2."""
+MIDSPAN_FLANGE_SURFACES = ("MIDTOPSURF", "MIDBOTSURF")
+"""The top and bottom flange outer surface nodes at x = L/2 at the centres of the two flange
+outstands, z = ±(b/2 + t_w/2)/2, away from the web."""
 ALL_ELEMENTS = "EALL"
 TIP_FACE_LABEL = "S4"
 """The C3D20 face through local nodes 2, 6, 7 and 3, which is the element's +x face."""
@@ -54,11 +60,29 @@ def generate_deck(params: BenchmarkParameters, level: MeshLevel) -> Deck:
     mesh = _Mesh(params, level)
     reference_node = len(mesh.node_ids) + 1
     tip = 2 * level.length_divisions
+    quarter_span = tip // 4
     nf = level.flange_thickness_divisions
-    top_mid_plane = 2 * (2 * nf + level.web_height_divisions) - nf
+    top_surface = 2 * (2 * nf + level.web_height_divisions)
+    top_mid_plane = top_surface - nf
+    flange_edges = (0, 10 * nf)
+    outstand_centres = (2 * nf, 8 * nf)
 
     def in_web_footprint(k: int) -> bool:
         return 4 * nf <= k <= 6 * nf
+
+    def in_top_flange(j: int) -> bool:
+        return j >= top_surface - 2 * nf
+
+    def in_bottom_flange(j: int) -> bool:
+        return j <= 2 * nf
+
+    def flange_tip_edge(in_flange: Callable[[int], bool], k_edge: int) -> tuple[int, ...]:
+        return mesh.nodes_where(lambda i, j, k: i == quarter_span and in_flange(j) and k == k_edge)
+
+    def midspan_surface(j_surface: int) -> tuple[int, ...]:
+        return mesh.nodes_where(
+            lambda i, j, k: i == tip // 2 and j == j_surface and k in outstand_centres
+        )
 
     node_sets = {
         ROOT_FACE: mesh.nodes_where(lambda i, j, k: i == 0),
@@ -70,7 +94,15 @@ def generate_deck(params: BenchmarkParameters, level: MeshLevel) -> Deck:
         BOTTOM_FLANGE_CENTRE_LINE: mesh.nodes_where(
             lambda i, j, k: j == nf and in_web_footprint(k)
         ),
+        MIDSPAN_FLANGE_SURFACES[0]: midspan_surface(top_surface),
+        MIDSPAN_FLANGE_SURFACES[1]: midspan_surface(0),
     }
+    tip_edges = [
+        flange_tip_edge(in_flange, k_edge)
+        for in_flange in (in_top_flange, in_bottom_flange)
+        for k_edge in flange_edges
+    ]
+    node_sets.update(zip(FLANGE_TIP_EDGES, tip_edges, strict=True))
     tip_elements = [eid for eid, (i, _, _) in enumerate(mesh.cell_origins, start=1) if i == tip - 2]
 
     lines = ["*HEADING", f"Solid I-beam in torsion, mesh level {level.name}", "*NODE, NSET=NALL"]
