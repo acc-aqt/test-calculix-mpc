@@ -142,11 +142,13 @@ def twist_figure(
         "The FE curves of the three levels nearly coincide and lie above Vlasov; the lower panel "
         "shows the gap growing smoothly from the root to "
         f"{gap[-1] * 1000:+.1f} mrad ({fine.result.tip_twist_error:+.2f} %) at the tip on the "
-        f"{fine.result.mesh_level.name} level, {midspan_error:+.1f} % at midspan. That is the "
-        "thin-walled torsion constant, which leaves out the plate-end correction and so "
+        f"{fine.result.mesh_level.name} level, {midspan_error:+.1f} % at midspan. Most of it is "
+        "the thin-walled torsion constant, which leaves out the plate-end correction and so "
         "overstates the solid's St-Venant stiffness. The dotted line (information) is Vlasov "
         f"with the end-corrected J = {j_corrected:.0f} mm⁴, which ends at "
-        f"{a.end_corrected_tip_twist:.4f} rad and accounts for most of the gap."
+        f"{a.end_corrected_tip_twist:.4f} rad. The FE gap follows it up to about two thirds of "
+        "the length and then grows past it, over the stretch where figure 3 shows the "
+        "disturbance from the load introduction."
     )
 
 
@@ -288,7 +290,8 @@ def flange_tip_stress_figure(
         f"({warping_stress_at(params, 2500.0, y, z):.1f} MPa at x = 2500, FE "
         f"{fine.flange_tip_sxx[station_2500][0]:.1f}), and it returns near zero only at the "
         "tip face, which is free to warp. All three mesh levels agree, so it is not a "
-        "discretisation error but the load introduction. The distributing coupling spreads the "
+        "discretisation error. The likely cause is the load introduction: the distributing "
+        "coupling spreads the "
         "torque in proportion to the distance from the axis, which puts most of it into the "
         "flanges as lateral shear, while Vlasov carries it almost entirely as St-Venant shear "
         "at a free tip. In an open section that difference is not confined to a short zone "
