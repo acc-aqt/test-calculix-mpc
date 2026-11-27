@@ -5,6 +5,7 @@ Exit codes: 0 PASS (or no verdict because not all three levels were run), 1 FAIL
 """
 
 import argparse
+import shutil
 import sys
 from pathlib import Path
 
@@ -18,7 +19,7 @@ LEVELS_BY_NAME = {level.name: level for level in MESH_LEVELS}
 
 def main(argv: list[str] | None = None) -> int:
     args = _parse_args(argv)
-    ccx = Path(args.ccx) if args.ccx else find_ccx()
+    ccx = _given_ccx(args.ccx) if args.ccx else find_ccx()
     if ccx is None or not ccx.is_file():
         print(
             f"ccx not found ({ccx or 'set CCX or use --ccx'}); no report written", file=sys.stderr
@@ -43,6 +44,15 @@ def main(argv: list[str] | None = None) -> int:
     return 1 if evaluated is Verdict.FAIL else 0
 
 
+def _given_ccx(given: str) -> Path:
+    """The --ccx value as a path, or looked up on PATH when it isn't an existing file."""
+    path = Path(given)
+    if path.is_file():
+        return path
+    on_path = shutil.which(given)
+    return Path(on_path) if on_path else path
+
+
 def _parse_args(argv: list[str] | None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument(
@@ -54,7 +64,10 @@ def _parse_args(argv: list[str] | None) -> argparse.Namespace:
     )
     parser.add_argument("--report", type=Path, default=HERE / "REPORT.md")
     parser.add_argument("--work-dir", type=Path, default=HERE / "work")
-    parser.add_argument("--ccx", help="ccx executable (default: $CCX, PATH, then the env's ccx)")
+    parser.add_argument(
+        "--ccx",
+        help="ccx executable, a path or a name on PATH (default: $CCX, PATH, then the env's ccx)",
+    )
     return parser.parse_args(argv)
 
 

@@ -1,3 +1,5 @@
+import os
+
 import pytest
 
 from benchmark import main
@@ -83,6 +85,21 @@ def test_finished_job_without_the_reference_node_print_stops_without_writing_a_r
     assert code == 2
     assert not report.exists()
     assert "REFNODE" in capsys.readouterr().err
+
+
+def test_bare_ccx_name_is_looked_up_on_path(tmp_path, monkeypatch, capsys):
+    bin_dir = tmp_path / "bin"
+    bin_dir.mkdir()
+    fake_ccx(bin_dir, "echo ' *ERROR in calinput: found on PATH'; exit 201").rename(
+        bin_dir / "my-ccx"
+    )
+    monkeypatch.setenv("PATH", f"{bin_dir}{os.pathsep}{os.environ['PATH']}")
+    monkeypatch.chdir(tmp_path)
+
+    code, _ = run_coarse(tmp_path, "my-ccx")
+
+    assert code == 2
+    assert "found on PATH" in capsys.readouterr().err
 
 
 def test_ccx_failure_stops_without_writing_a_report(tmp_path, capsys):

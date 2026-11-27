@@ -55,8 +55,8 @@ and writes `REPORT.md`, which is committed. Options:
 - `--report <path>` writes the report somewhere else.
 - `--work-dir <dir>` changes where decks and solver output go. The default is `work/<mesh
   level>/tube.inp` (and `.frd`, `.dat`, ...) in this folder, which git ignores.
-- `--ccx <path>` sets the solver. Without it, the command uses `$CCX`, then `ccx` on `PATH`, then
-  the environment's `ccx`.
+- `--ccx <path or name>` sets the solver; a bare name is looked up on `PATH`. Without it, the
+  command uses `$CCX`, then `ccx` on `PATH`, then the environment's `ccx`.
 
 Exit codes: `0` PASS (or no verdict), `1` FAIL, `2` when `ccx` is missing, fails or doesn't
 finish the job. On exit code 2 the command prints the `*ERROR` lines and writes no report.
