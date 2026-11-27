@@ -11,6 +11,9 @@ TIP_TWIST_TOLERANCE_PERCENT = 8.0
 """Allowed |error| of φ(L) against the thin-walled Vlasov target. Wider than the stress
 tolerance because the thin-walled J overestimates the solid section's torsion constant."""
 WARPING_STRESS_TOLERANCE_PERCENT = 5.0
+FOLLOW_UP = "[#29](https://github.com/acc-aqt/test-calculix-mpc/issues/29)"
+"""The issue that follows up the tip load-introduction zone, linked from REPORT.md and
+FIGURES.md."""
 
 
 class Verdict(Enum):
@@ -137,8 +140,7 @@ def _theory_gap_section(a: AnalyticalSolution) -> list[str]:
         "most of the torque into the flanges as lateral shear, where Vlasov carries it almost "
         "entirely as St-Venant shear at a free tip; in an open section that difference settles "
         f"over about 1/λ ≈ {1 / a.torsion_parameter:.0f} mm rather than locally. See figures 1 "
-        "and 3 of [FIGURES.md](FIGURES.md) and the follow-up "
-        "[#29](https://github.com/acc-aqt/test-calculix-mpc/issues/29).",
+        f"and 3 of [FIGURES.md](FIGURES.md) and the follow-up {FOLLOW_UP}.",
         "",
         "Because the coarse mesh is slightly stiffer in torsion, the errors against the "
         "thin-walled targets grow a little as the mesh is refined, rather than shrink: the FE "

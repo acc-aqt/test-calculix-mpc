@@ -21,11 +21,10 @@ from figure_data import FigureSeries, MeshLevelResults, figure_series
 from frd import read_frd
 from palette import AXIS, BAND, BLUE, DARK_BLUE, GRID, INK, LIGHT_BLUE, ORANGE, SECONDARY_INK
 from renders import stress_figure
-from report import TIP_TWIST_TOLERANCE_PERCENT, WARPING_STRESS_TOLERANCE_PERCENT
+from report import FOLLOW_UP, TIP_TWIST_TOLERANCE_PERCENT, WARPING_STRESS_TOLERANCE_PERCENT
 from runner import benchmark_result, result_files
 
 HERE = Path(__file__).resolve().parent
-FOLLOW_UP = "[#29](https://github.com/acc-aqt/test-calculix-mpc/issues/29)"
 LEVELS_BY_NAME = {level.name: level for level in MESH_LEVELS}
 
 LEVEL_STYLES = {
