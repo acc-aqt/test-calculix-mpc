@@ -102,7 +102,7 @@ def render_report(
         "## Verdict",
         "",
         f"**{verdict_line}**. The rule: PASS when the fine C3D20R level's σ_yy(D) is within "
-        f"±{TOLERANCE_PERCENT:g} % of the published {_minus(target_stress_at_d())} MPa, with the "
+        f"±{TOLERANCE_PERCENT:g} % of the published {signed(target_stress_at_d())} MPa, with the "
         "same sign, and σ_yy(D) is converging, |fine − medium| < |medium − coarse|. The error is "
         "signed against the signed target, so a flipped sign gives about −200 % and fails. The "
         "coarse and medium levels count only through the convergence condition; the Richardson "
@@ -158,7 +158,7 @@ def _target_section(params: BenchmarkParameters) -> list[str]:
         "",
         "| Quantity | Value |",
         "|---|---|",
-        f"| σ_yy(D), published (target) | {_minus(target_stress_at_d())} MPa |",
+        f"| σ_yy(D), published (target) | {signed(target_stress_at_d())} MPa |",
         "",
         f"Point D is (a_i, 0, +{half:g}) mm: on the hole edge, on the x axis, on the loaded "
         "face. The value is the published reference value, from four vendor "
@@ -209,7 +209,7 @@ def _richardson_lines(results: Sequence[BenchmarkResult]) -> list[str]:
         ]
     else:
         error = stress_at_d_error(estimate)
-        value = f"{estimate:.3f} MPa | {error:+.2f} %".replace("-", "−")
+        value = f"{signed(estimate, 3)} MPa | {signed(error, 2, plus=True)} %"
         lines += [
             f"| Observed order p (information) | {order:.2f} | – |",
             f"| Richardson estimate (information) | {value} |",
@@ -307,14 +307,18 @@ def _sanity_guards_section(
     for r in results:
         volume_difference = (r.mesh_volume - volume) / volume * 100
         reaction_difference = (r.reaction_z_on_ee - load) / load * 100
-        row = (
-            f"| {r.mesh_level.label} | {r.mesh_volume:.0f} | {volume_difference:+.6f} "
-            f"| {r.reaction_z_on_ee:.1f} | {reaction_difference:+.6f} |"
+        lines.append(
+            f"| {r.mesh_level.label} | {r.mesh_volume:.0f} "
+            f"| {signed(volume_difference, 6, plus=True)} | {r.reaction_z_on_ee:.1f} "
+            f"| {signed(reaction_difference, 6, plus=True)} |"
         )
-        lines.append(row.replace("-", "−"))
     lines.append("")
     return lines
 
 
-def _minus(value: float) -> str:
-    return f"{value:g}".replace("-", "−")
+def signed(value: float, digits: int | None = None, plus: bool = False) -> str:
+    """The value with a Unicode minus, in :g format or with the given decimals, and a leading
+    + on positive values when plus is set."""
+    sign = "+" if plus else ""
+    text = f"{value:{sign}g}" if digits is None else f"{value:{sign}.{digits}f}"
+    return text.replace("-", "−")
