@@ -11,7 +11,7 @@ from pathlib import Path
 
 import numpy as np
 
-from analytical import AnalyticalSolution, analytical_solution
+from analytical import AnalyticalSolution, analytical_solution, warping_stress_at
 from benchmark_parameters import BenchmarkParameters, MeshLevel
 from deck import (
     BOTTOM_FLANGE_MID_PLANE_CENTRE_NODES,
@@ -93,6 +93,49 @@ class BenchmarkResult:
         return _percent_error(
             self.midspan_st_venant_shear_stress, self.analytical.midspan_st_venant_shear_stress
         )
+
+
+@dataclass(frozen=True)
+class TipZone:
+    """How the tip load-introduction zone shows on the top flange-tip σ_xx of one mesh level."""
+
+    onset_x: float
+    """The first x station past L/4 where σ_xx is more than ONSET_MARGIN above the Vlasov
+    curve with the end-corrected J, or L when there is none before the tip."""
+    plateau_min: float
+    plateau_max: float
+    """The range of σ_xx over PLATEAU_RANGE, where Vlasov has fallen to a few MPa."""
+    quarter_span_vs_end_corrected: float
+    """Signed % difference of σ_xx at x = L/4 from the end-corrected Vlasov curve."""
+
+
+PLATEAU_RANGE = (2000.0, 2800.0)
+"""The x range (mm) over which the flange-tip σ_xx levels off in the tip zone."""
+ONSET_MARGIN = 0.02
+
+
+def tip_zone(result: BenchmarkResult, params: BenchmarkParameters) -> TipZone:
+    """The tip-zone numbers of the report and of figure 3, from the flange-tip σ_xx curve."""
+    x, sxx = (np.array(column) for column in zip(*result.flange_tip_stress_curve, strict=True))
+    length = params.length
+    a = result.analytical
+    corrected = warping_stress_at(
+        params,
+        x,
+        a.flange_mid_plane_distance / 2,
+        -params.section.flange_width / 2,
+        a.end_corrected_torsion_constant,
+    )
+    beyond_quarter = (x > length / 4) & (x < length)
+    above = beyond_quarter & (sxx > (1 + ONSET_MARGIN) * corrected)
+    plateau = sxx[(x >= PLATEAU_RANGE[0]) & (x <= PLATEAU_RANGE[1])]
+    quarter = np.isclose(x, length / 4)
+    return TipZone(
+        onset_x=float(x[above].min()) if above.any() else float(length),
+        plateau_min=float(plateau.min()),
+        plateau_max=float(plateau.max()),
+        quarter_span_vs_end_corrected=float((sxx[quarter][0] / corrected[quarter][0] - 1) * 100),
+    )
 
 
 def find_ccx() -> Path | None:
