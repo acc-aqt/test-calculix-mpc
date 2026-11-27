@@ -38,6 +38,9 @@ class AnalyticalSolution:
     """Vlasov φ(L), the twist target."""
     quarter_span_warping_stress: float
     """Magnitude E·ω·φ''(L/4) at the flange tips, the warping stress target."""
+    quarter_span_flange_tip_warping_stresses: tuple[float, float, float, float]
+    """Signed σ_w(L/4) at the flange tips, top flange at z = −b/2 and +b/2, then bottom flange
+    at z = −b/2 and +b/2: the + − − + pattern for T about +x."""
     root_warping_stress: float
     """Magnitude E·ω·φ''(0), information only."""
     midspan_st_venant_shear_stress: float
@@ -46,6 +49,8 @@ class AnalyticalSolution:
     """J with the end correction (1 − 0.63·t/b) on each plate, information only."""
     end_corrected_tip_twist: float
     """Vlasov φ(L) with the end-corrected J, information only."""
+    end_corrected_quarter_span_warping_stress: float
+    """E·ω·φ''(L/4) with the end-corrected J, information only."""
 
 
 def analytical_solution(params: BenchmarkParameters) -> AnalyticalSolution:
@@ -67,12 +72,20 @@ def analytical_solution(params: BenchmarkParameters) -> AnalyticalSolution:
         st_venant_tip_twist=float(st_venant_twist_at(params, length)),
         tip_twist=float(twist_at(params, length)),
         quarter_span_warping_stress=float(e * omega * twist_curvature_at(params, length / 4)),
+        quarter_span_flange_tip_warping_stresses=tuple(
+            float(warping_stress_at(params, length / 4, y, z))
+            for y in (h_m / 2, -h_m / 2)
+            for z in (-s.flange_width / 2, s.flange_width / 2)
+        ),
         root_warping_stress=float(e * omega * twist_curvature_at(params, 0.0)),
         midspan_st_venant_shear_stress=float(
             g * s.flange_thickness * twist_rate_at(params, length / 2)
         ),
         end_corrected_torsion_constant=end_corrected_j,
         end_corrected_tip_twist=_vlasov_tip_twist(params, g, end_corrected_j, warping_constant),
+        end_corrected_quarter_span_warping_stress=_vlasov_quarter_span_warping_stress(
+            params, g, end_corrected_j, warping_constant, omega
+        ),
     )
 
 
@@ -134,6 +147,17 @@ def _vlasov_tip_twist(
     lam = np.sqrt(g * j / (params.material.youngs_modulus * warping_constant))
     length = params.length
     return float(params.torque / (g * j) * (length - np.tanh(lam * length) / lam))
+
+
+def _vlasov_quarter_span_warping_stress(
+    params: BenchmarkParameters, g: float, j: float, warping_constant: float, omega: float
+) -> float:
+    """E·ω·φ''(L/4) for a given J."""
+    e = params.material.youngs_modulus
+    lam = np.sqrt(g * j / (e * warping_constant))
+    length = params.length
+    curvature = params.torque / (g * j) * lam * np.sinh(0.75 * lam * length) / np.cosh(lam * length)
+    return float(e * omega * curvature)
 
 
 def _curve_constants(params: BenchmarkParameters) -> tuple[float, float, float]:

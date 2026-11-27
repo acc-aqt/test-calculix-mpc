@@ -2,7 +2,9 @@ import os
 
 import pytest
 from dcoup_variant import distributing_coupling_variant
+from records import result
 
+import benchmark
 from benchmark import main
 from benchmark_parameters import COARSE, IPE200_TORSION
 from deck import generate_deck
@@ -52,6 +54,21 @@ def run_coarse(tmp_path, ccx):
         ]
     )  # fmt: skip
     return code, report
+
+
+def test_failing_fine_level_writes_the_report_and_exits_1(tmp_path, monkeypatch, capsys):
+    # A hand-made fine result 20 % off the Vlasov tip twist stands in for the solve.
+    monkeypatch.setattr(
+        benchmark, "run_benchmark", lambda level, params, work_dir, ccx: result(level, 1.2)
+    )
+    report = tmp_path / "REPORT.md"
+    ccx = fake_ccx(tmp_path, "exit 1")
+
+    code = main(["--levels", "fine", "--report", str(report), "--ccx", str(ccx)])
+
+    assert code == 1
+    assert "- Verdict: **FAIL**" in report.read_text()
+    assert "Verdict: FAIL" in capsys.readouterr().out
 
 
 def test_non_executable_ccx_stops_without_writing_a_report(tmp_path, capsys):

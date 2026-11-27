@@ -9,14 +9,26 @@ from collections import defaultdict
 from dataclasses import dataclass
 from pathlib import Path
 
+import numpy as np
+
 from analytical import AnalyticalSolution, analytical_solution
 from benchmark_parameters import BenchmarkParameters, MeshLevel
-from deck import BOTTOM_FLANGE_CENTRE_LINE, TOP_FLANGE_CENTRE_LINE, Deck, generate_deck
-from frd import FrdResults, read_frd
+from deck import (
+    BOTTOM_FLANGE_CENTRE_LINE,
+    FLANGE_TIP_EDGES,
+    MIDSPAN_FLANGE_SURFACES,
+    ROOT_FACE,
+    TOP_FLANGE_CENTRE_LINE,
+    Deck,
+    generate_deck,
+)
+from frd import FrdResults, NodalValues, read_frd
 
 JOB_NAME = "ibeam"
 ZERO_TWIST_FRACTION = 0.01
 """A tip twist below this fraction of the St-Venant tip twist means the torque never arrived."""
+_SXX, _SZX = 0, 5
+"""Positions in a .frd STRESS record (sxx, syy, szz, sxy, syz, szx)."""
 
 
 class CcxError(RuntimeError):
@@ -35,6 +47,15 @@ class BenchmarkResult:
     twist_curve: tuple[tuple[float, float], ...]
     """(x, φ) at each x station with flange mid-plane centre nodes, root to tip, where
     φ = (u_z,top − u_z,bottom) / h_m from the mean u_z of each flange's centre nodes."""
+    flange_tip_warping_stresses: tuple[float, float, float, float]
+    """Signed mean nodal σ_xx over each flange-tip edge at x = L/4, through the flange thickness:
+    top flange at z = −b/2 and +b/2, then bottom flange at z = −b/2 and +b/2."""
+    midspan_st_venant_shear_stress: float
+    """Mean nodal τ_xz on the top flange outer surface minus that on the bottom one, halved, at
+    the outstand centres at x = L/2. Information only: warping shear is mixed in."""
+    root_peak_von_mises: float
+    """Largest nodal von Mises stress on the root face. Information only: the fixed face is
+    singular where it meets the free surfaces."""
     analytical: AnalyticalSolution
 
     @property
@@ -51,6 +72,23 @@ class BenchmarkResult:
     def st_venant_tip_twist_error(self) -> float:
         """Signed % error against the pure St-Venant φ_SV(L), information only."""
         return _percent_error(self.tip_twist, self.analytical.st_venant_tip_twist)
+
+    @property
+    def warping_stress_errors(self) -> tuple[float, ...]:
+        """Signed % errors against the signed σ_w(L/4) at each flange tip, so a flipped sign
+        gives about −200 %."""
+        targets = self.analytical.quarter_span_flange_tip_warping_stresses
+        return tuple(
+            _percent_error(value, target)
+            for value, target in zip(self.flange_tip_warping_stresses, targets, strict=True)
+        )
+
+    @property
+    def st_venant_shear_stress_error(self) -> float:
+        """Signed % error against G·t_f·φ'(L/2), information only."""
+        return _percent_error(
+            self.midspan_st_venant_shear_stress, self.analytical.midspan_st_venant_shear_stress
+        )
 
 
 def find_ccx() -> Path | None:
@@ -120,14 +158,26 @@ def benchmark_result(
     Raises ZeroTwistError when the tip barely twisted, and CcxError when the .frd has no
     displacements.
     """
-    if "DISP" not in frd.nodal_results:
-        raise CcxError("ccx wrote no DISP block to the .frd")
+    for block in ("DISP", "STRESS"):
+        if block not in frd.nodal_results:
+            raise CcxError(f"ccx wrote no {block} block to the .frd")
     analytical = analytical_solution(params)
+    stresses = frd.nodal_results["STRESS"]
+    top_surface, bottom_surface = (deck.node_sets[name] for name in MIDSPAN_FLANGE_SURFACES)
     result = BenchmarkResult(
         mesh_level=level,
         element_count=deck.element_count,
         node_count=deck.node_count,
         twist_curve=_twist_curve(frd, deck, analytical.flange_mid_plane_distance),
+        flange_tip_warping_stresses=tuple(
+            _mean_component(stresses, deck.node_sets[name], _SXX) for name in FLANGE_TIP_EDGES
+        ),
+        midspan_st_venant_shear_stress=(
+            _mean_component(stresses, top_surface, _SZX)
+            - _mean_component(stresses, bottom_surface, _SZX)
+        )
+        / 2,
+        root_peak_von_mises=float(max(von_mises(stresses[n]) for n in deck.node_sets[ROOT_FACE])),
         analytical=analytical,
     )
     threshold = ZERO_TWIST_FRACTION * analytical.st_venant_tip_twist
@@ -155,6 +205,18 @@ def _mean_uz_by_x(frd: FrdResults, nodes: tuple[int, ...]) -> dict[float, float]
     for n in nodes:
         by_x[frd.nodes[n][0]].append(displacements[n][2])
     return {x: sum(uz) / len(uz) for x, uz in by_x.items()}
+
+
+def _mean_component(stresses: NodalValues, nodes: tuple[int, ...], component: int) -> float:
+    return sum(stresses[n][component] for n in nodes) / len(nodes)
+
+
+def von_mises(stress) -> float | np.ndarray:
+    """Von Mises stress of one (sxx, syy, szz, sxy, syz, szx) record, or of each row of an
+    (n, 6) array."""
+    sxx, syy, szz, sxy, syz, szx = np.moveaxis(np.asarray(stress)[..., :6], -1, 0)
+    normal = (sxx - syy) ** 2 + (syy - szz) ** 2 + (szz - sxx) ** 2
+    return np.sqrt(normal / 2 + 3 * (sxy**2 + syz**2 + szx**2))
 
 
 def _percent_error(value: float, target: float) -> float:
