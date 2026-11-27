@@ -1,0 +1,11 @@
+name: calculix-bench
+channels:
+  - conda-forge
+dependencies:
+  - python=3.12
+  - calculix=2.24
+  - numpy
+  - pyvista
+  - matplotlib
+  - pytest
+  - ruff
