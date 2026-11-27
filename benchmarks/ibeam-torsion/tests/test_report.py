@@ -111,3 +111,10 @@ def test_report_links_to_the_coupling_adr():
 def test_report_links_to_the_figures_page():
     text = render_report([result(COARSE)], IPE200_TORSION, "Version 2.24")
     assert "](FIGURES.md)" in text
+
+
+def test_report_states_the_reach_of_the_tip_disturbance_and_links_the_follow_up():
+    text = render_report([result(COARSE)], IPE200_TORSION, "Version 2.24")
+    assert "x ≈ 1200 mm" in text
+    assert "does not reach x = L/4" not in text
+    assert "issues/29" in text

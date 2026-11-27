@@ -126,8 +126,19 @@ def _theory_gap_section(a: AnalyticalSolution) -> list[str]:
         "shear-rigid in warping; the solid deforms in shear as the flanges bend laterally, "
         "which softens it a little more.",
         "- **The tip load-introduction zone.** The coupling spreads the torque over the tip face "
-        "differently from the St-Venant shear flow. The disturbance is local to the tip and "
-        "does not reach x = L/4.",
+        "differently from the St-Venant shear flow, and the disturbance is not short. In the "
+        "committed run the flange-tip σ_w stays above Vlasov from about x ≈ 1200 mm to the tip "
+        "(on the fine level more than 2 % above the end-corrected curve), levelling off at "
+        "about 12–17 MPa between x = 2000 and 2800 mm, where Vlasov falls to a few MPa, and "
+        "dropping to near zero only at the tip face. All three mesh levels agree, so it is not "
+        "a discretisation error. x = L/4 is clear of it: there the fine level is −0.47 % from "
+        "the end-corrected curve. The φ(x) gap also grows past the end-corrected line over the "
+        "last third of the length. The likely cause, not proven, is that the coupling brings "
+        "most of the torque into the flanges as lateral shear, where Vlasov carries it almost "
+        "entirely as St-Venant shear at a free tip; in an open section that difference settles "
+        f"over about 1/λ ≈ {1 / a.torsion_parameter:.0f} mm rather than locally. See figures 1 "
+        "and 3 of [FIGURES.md](FIGURES.md) and the follow-up "
+        "[#29](https://github.com/acc-aqt/test-calculix-mpc/issues/29).",
         "",
         "Because the coarse mesh is slightly stiffer in torsion, the errors against the "
         "thin-walled targets grow a little as the mesh is refined, rather than shrink: the FE "
