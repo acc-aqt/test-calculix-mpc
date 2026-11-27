@@ -108,7 +108,6 @@ seconds). Figures 1-4 are 3D views that `renders.py` draws off-screen with PyVis
 are matplotlib charts. Options:
 
 - `--work-dir <dir>` reads the solver output from another folder, as for `benchmark.py`.
-- `--levels coarse medium` plots only the levels you name. The committed figures use all three.
 - `--output-dir <dir>` writes `figures/` and `FIGURES.md` somewhere else.
 
 Exit codes: `0` figures written, `1` when a mesh level's `.frd` or `.dat` is missing. Then the

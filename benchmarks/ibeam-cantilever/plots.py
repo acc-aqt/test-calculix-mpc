@@ -461,7 +461,7 @@ def _parse_args(argv: list[str] | None) -> argparse.Namespace:
         nargs="+",
         choices=list(LEVELS_BY_NAME),
         default=list(LEVELS_BY_NAME),
-        help="mesh levels to plot (default: all)",
+        help=argparse.SUPPRESS,
     )
     parser.add_argument("--work-dir", type=Path, default=HERE / "work")
     parser.add_argument(
