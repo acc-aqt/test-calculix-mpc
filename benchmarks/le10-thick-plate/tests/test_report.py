@@ -2,6 +2,7 @@ import pytest
 from records import levels, result
 
 from benchmark_parameters import COARSE, FINE, LE10, MEDIUM
+from deck import C3D20
 from report import Verdict, render_report, richardson_estimate, verdict
 
 
@@ -156,3 +157,41 @@ def test_richardson_estimate_is_not_available_without_three_converging_levels(re
     text = render_report(results, LE10, "Version 2.24")
     assert "| Richardson estimate (information) | not available | – |" in text
     assert not flagged(text)
+
+
+def test_c3d20_rows_sit_beside_the_c3d20r_rows_for_information():
+    results = [result(COARSE, 1.05), result(COARSE, 1.10, element_type=C3D20)]
+    text = render_report(results, LE10, "Version 2.24")
+    # C3D20R -5.649 MPa; C3D20 1.10 x -5.38 = -5.918 MPa, +10.00 %.
+    assert "| coarse 6×4×2 | -5.649 | -5.918 | +10.00 | -3.820 |" in text
+    assert "C3D20 (information)" in text
+
+
+def c3d20_levels(*ratios):
+    return [
+        result(level, ratio, element_type=C3D20)
+        for level, ratio in zip((COARSE, MEDIUM, FINE), ratios, strict=True)
+    ]
+
+
+def test_c3d20_values_never_count():
+    reduced = levels(1.02, 1.005, 1.0)
+    far_off = c3d20_levels(2.0, 2.0, 2.0)
+    with_c3d20 = render_report(reduced + far_off, LE10, "Version 2.24")
+    without = render_report(reduced, LE10, "Version 2.24")
+
+    def counted(text):
+        lines = text.splitlines()
+        verdict_lines = [line for line in lines if line.startswith("- Verdict")]
+        start = lines.index("## Convergence") + 1
+        end = next(n for n in range(start, len(lines)) if lines[n].startswith("## "))
+        return verdict_lines, lines[start:end]
+
+    assert counted(with_c3d20) == counted(without)
+    assert verdict(reduced + far_off) is Verdict.PASS
+    assert verdict(levels(1.5, 1.2, 1.1) + c3d20_levels(1.5, 1.2, 1.0)) is Verdict.FAIL
+
+
+def test_c3d20_levels_alone_give_no_verdict():
+    assert verdict(c3d20_levels(1.5, 1.2, 1.0)) is None
+    assert verdict([result(COARSE, 1.5), result(MEDIUM, 1.2), *c3d20_levels(1.5, 1.2, 1.0)]) is None

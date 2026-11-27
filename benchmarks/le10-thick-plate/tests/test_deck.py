@@ -3,7 +3,7 @@ import subprocess
 import pytest
 
 from benchmark_parameters import COARSE, LE10, MeshLevel
-from deck import HOLE_EDGE, LINE_EE, POINT_D, THICKNESS_LINE_AT_D, generate_deck
+from deck import C3D20, C3D20R, HOLE_EDGE, LINE_EE, POINT_D, THICKNESS_LINE_AT_D, generate_deck
 from runner import JOB_NAME, find_ccx
 
 CCX = find_ccx()
@@ -84,6 +84,29 @@ def test_odd_thickness_divisions_are_rejected_because_ee_needs_a_node_line_at_z_
 @needs_ccx
 def test_coarse_deck_solves_without_errors_or_warnings(coarse_deck, tmp_path):
     (tmp_path / f"{JOB_NAME}.inp").write_text(coarse_deck.text)
+    completed = subprocess.run(
+        [str(CCX), "-i", JOB_NAME], cwd=tmp_path, capture_output=True, text=True, check=False
+    )
+    output = completed.stdout + completed.stderr
+    assert completed.returncode == 0
+    assert "Job finished" in output
+    assert "ERROR" not in output.upper()
+    assert "WARNING" not in output.upper()
+
+
+def test_c3d20_deck_differs_from_the_c3d20r_deck_only_in_element_type(coarse_deck):
+    reduced = coarse_deck.text.splitlines()
+    full = generate_deck(LE10, COARSE, C3D20).text.splitlines()
+    differing = [(r, f) for r, f in zip(reduced, full, strict=True) if r != f]
+    assert differing == [
+        ("*ELEMENT, TYPE=C3D20R, ELSET=EALL", "*ELEMENT, TYPE=C3D20, ELSET=EALL"),
+    ]
+    assert generate_deck(LE10, COARSE, C3D20R).text == coarse_deck.text
+
+
+@needs_ccx
+def test_coarse_c3d20_deck_solves_without_errors_or_warnings(tmp_path):
+    (tmp_path / f"{JOB_NAME}.inp").write_text(generate_deck(LE10, COARSE, C3D20).text)
     completed = subprocess.run(
         [str(CCX), "-i", JOB_NAME], cwd=tmp_path, capture_output=True, text=True, check=False
     )

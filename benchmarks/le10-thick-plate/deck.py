@@ -1,5 +1,5 @@
-"""CalculiX input deck for the LE10 thick plate: a mapped C3D20R mesh of the quarter elliptic
-annulus, the LE10 supports, a pressure on the top face, and output.
+"""CalculiX input deck for the LE10 thick plate: a mapped C3D20R or C3D20 mesh of the quarter
+elliptic annulus, the LE10 supports, a pressure on the top face, and output.
 
 Axes: x and y in the plane of the plate, z through the thickness with the mid-plane at z = 0.
 The hole edge is the inner ellipse, point D is at (a_i, 0, +t/2) and A at (0, b_i, +t/2).
@@ -16,7 +16,15 @@ import math
 from collections.abc import Callable
 from dataclasses import dataclass
 
+import numpy as np
+
 from benchmark_parameters import BenchmarkParameters, MeshLevel
+
+C3D20R = "C3D20R"
+"""20-node brick, reduced integration: the element type the verdict is decided on."""
+C3D20 = "C3D20"
+"""20-node brick, full integration: solved for information only."""
+ELEMENT_TYPES = (C3D20R, C3D20)
 
 Y0_FACE = "YSYMM"
 X0_FACE = "XSYMM"
@@ -46,6 +54,11 @@ C3D20_OFFSETS = _CORNERS + [
     for m, n in _EDGES
 ]
 
+_NATURAL = np.array(C3D20_OFFSETS, dtype=float) - 1.0
+"""Natural coordinates (ξ, η, ζ) in [−1, 1]³ of the 20 local nodes."""
+_GAUSS_POINTS = (-math.sqrt(0.6), 0.0, math.sqrt(0.6))
+_GAUSS_WEIGHTS = (5 / 9, 8 / 9, 5 / 9)
+
 Index = tuple[int, int, int]
 Point = tuple[float, float, float]
 
@@ -67,7 +80,9 @@ class Deck:
         return len(self.elements)
 
 
-def generate_deck(params: BenchmarkParameters, level: MeshLevel) -> Deck:
+def generate_deck(
+    params: BenchmarkParameters, level: MeshLevel, element_type: str = C3D20R
+) -> Deck:
     _check_divisions(level)
     mesh = _Mesh(params, level)
     outer = 2 * level.across_divisions
@@ -89,7 +104,7 @@ def generate_deck(params: BenchmarkParameters, level: MeshLevel) -> Deck:
 
     lines = ["*HEADING", f"NAFEMS LE10 thick plate, mesh level {level.name}", "*NODE, NSET=NALL"]
     lines += [f"{nid}, {x!r}, {y!r}, {z!r}" for nid, (x, y, z) in mesh.nodes.items()]
-    lines.append(f"*ELEMENT, TYPE=C3D20R, ELSET={ALL_ELEMENTS}")
+    lines.append(f"*ELEMENT, TYPE={element_type}, ELSET={ALL_ELEMENTS}")
     for eid, nodes in enumerate(mesh.elements, start=1):
         ids = [str(eid), *map(str, nodes)]
         lines += [", ".join(ids[:16]) + ",", ", ".join(ids[16:])]
@@ -120,6 +135,8 @@ def generate_deck(params: BenchmarkParameters, level: MeshLevel) -> Deck:
         "S",
         f"*EL PRINT, ELSET={ELEMENT_AT_D}",
         "S, COORD",
+        f"*NODE PRINT, NSET={LINE_EE}, TOTALS=ONLY",
+        "RF",
         "*END STEP",
     ]
     return Deck(
@@ -128,6 +145,43 @@ def generate_deck(params: BenchmarkParameters, level: MeshLevel) -> Deck:
         elements=tuple(tuple(e) for e in mesh.elements),
         node_sets=node_sets,
     )
+
+
+def mesh_volume(deck: Deck) -> float:
+    """The volume of the deck's elements, integrated from their node positions with the
+    20-node serendipity shape functions and 3×3×3 Gauss points, so curved edges count."""
+    gradients = [
+        (w1 * w2 * w3, _shape_gradients(np.array([p1, p2, p3])))
+        for p1, w1 in zip(_GAUSS_POINTS, _GAUSS_WEIGHTS, strict=True)
+        for p2, w2 in zip(_GAUSS_POINTS, _GAUSS_WEIGHTS, strict=True)
+        for p3, w3 in zip(_GAUSS_POINTS, _GAUSS_WEIGHTS, strict=True)
+    ]
+    volume = 0.0
+    for element in deck.elements:
+        positions = np.array([deck.nodes[n] for n in element])
+        volume += sum(weight * np.linalg.det(grad.T @ positions) for weight, grad in gradients)
+    return float(volume)
+
+
+def _shape_gradients(point: np.ndarray) -> np.ndarray:
+    """∂N_i/∂(ξ, η, ζ) of the 20 serendipity shape functions at a natural point, shape (20, 3).
+
+    A corner node at n = (±1, ±1, ±1) has N = ⅛ Π(1 + n_j x_j) · (n·x − 2); a midside node has
+    N = ¼ Π f_j, with f_j = 1 − x_j² along its edge and 1 + n_j x_j across it.
+    """
+    gradients = np.zeros((20, 3))
+    for i, n in enumerate(_NATURAL):
+        if np.all(n != 0):
+            linear = 1 + n * point
+            for j in range(3):
+                others = np.prod(np.delete(linear, j))
+                gradients[i, j] = n[j] * others * (n @ point + linear[j] - 2) / 8
+        else:
+            factors = np.where(n == 0, 1 - point**2, 1 + n * point)
+            derivatives = np.where(n == 0, -2 * point, n)
+            for j in range(3):
+                gradients[i, j] = derivatives[j] * np.prod(np.delete(factors, j)) / 4
+    return gradients
 
 
 def _check_divisions(level: MeshLevel) -> None:

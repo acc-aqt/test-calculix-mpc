@@ -5,6 +5,7 @@ from collections.abc import Sequence
 from enum import Enum
 
 from benchmark_parameters import COARSE, FINE, MEDIUM, BenchmarkParameters
+from deck import C3D20, C3D20R
 from reference import quarter_annulus_volume, target_stress_at_d, top_face_area
 from runner import BenchmarkResult
 
@@ -20,8 +21,9 @@ class Verdict(Enum):
 
 
 def verdict(results: Sequence[BenchmarkResult]) -> Verdict | None:
-    """PASS when the fine level's σ_yy(D) is within ±3 % of the published value and
-    |fine − medium| < |medium − coarse|; None unless coarse, medium and fine were all run.
+    """PASS when the fine C3D20R level's σ_yy(D) is within ±3 % of the published value and
+    |fine − medium| < |medium − coarse|; None unless coarse, medium and fine C3D20R levels
+    were all run. C3D20 records never count.
 
     The error is signed against the signed target, so a flipped sign gives about −200 % and
     fails.
@@ -41,33 +43,31 @@ def verdict_text(evaluated: Verdict | None) -> str:
     return evaluated.value
 
 
-def richardson_estimate(coarse: float, medium: float, fine: float) -> float | None:
-    """The converged value extrapolated from three levels at refinement ratio 2, with the
-    observed order p = ln((coarse − medium)/(medium − fine)) / ln 2.
-
-    None unless the differences shrink geometrically with the same sign (p > 0).
-    """
+def observed_order(coarse: float, medium: float, fine: float) -> float | None:
+    """p = ln((coarse − medium)/(medium − fine)) / ln 2; None unless the differences shrink
+    geometrically with the same sign (p > 0)."""
     if medium == fine:
         return None
     ratio = (coarse - medium) / (medium - fine)
     if ratio <= 1:
         return None
-    order = math.log(ratio) / math.log(REFINEMENT_RATIO)
-    return fine + (fine - medium) / (REFINEMENT_RATIO**order - 1)
+    return math.log(ratio) / math.log(REFINEMENT_RATIO)
 
 
-def results_richardson_estimate(results: Sequence[BenchmarkResult]) -> float | None:
-    """The Richardson estimate of σ_yy(D); None unless coarse, medium and fine were all run."""
-    levels = _coarse_medium_fine(results)
-    if levels is None:
+def richardson_estimate(coarse: float, medium: float, fine: float) -> float | None:
+    """The converged value extrapolated from three levels at refinement ratio 2 with the
+    observed order; None when the order is not available."""
+    order = observed_order(coarse, medium, fine)
+    if order is None:
         return None
-    return richardson_estimate(*(r.stress_yy_at_d for r in levels))
+    return fine + (fine - medium) / (REFINEMENT_RATIO**order - 1)
 
 
 def _coarse_medium_fine(
     results: Sequence[BenchmarkResult],
 ) -> tuple[BenchmarkResult, BenchmarkResult, BenchmarkResult] | None:
-    by_level = {r.mesh_level: r for r in results}
+    """The C3D20R coarse, medium and fine records; None unless all three were run."""
+    by_level = {r.mesh_level: r for r in results if r.element_type == C3D20R}
     if not {COARSE, MEDIUM, FINE} <= by_level.keys():
         return None
     return by_level[COARSE], by_level[MEDIUM], by_level[FINE]
@@ -77,6 +77,8 @@ def render_report(
     results: Sequence[BenchmarkResult], params: BenchmarkParameters, ccx_version: str
 ) -> str:
     verdict_line = verdict_text(verdict(results))
+    reduced = [r for r in results if r.element_type == C3D20R]
+    full = [r for r in results if r.element_type == C3D20]
     lines = [
         "# NAFEMS LE10 thick plate benchmark report",
         "",
@@ -87,17 +89,19 @@ def render_report(
         "",
         *_parameters_section(params),
         *_target_section(params),
-        *_convergence_section(results),
+        *_convergence_section(reduced),
         "## Verdict",
         "",
-        f"**{verdict_line}**. The rule: PASS when the fine mesh level's σ_yy(D) is within "
+        f"**{verdict_line}**. The rule: PASS when the fine C3D20R level's σ_yy(D) is within "
         f"±{TOLERANCE_PERCENT:g} % of the published {_minus(target_stress_at_d())} MPa, with the "
         "same sign, and σ_yy(D) is converging, |fine − medium| < |medium − coarse|. The error is "
         "signed against the signed target, so a flipped sign gives about −200 % and fails. The "
         "coarse and medium levels count only through the convergence condition; the Richardson "
-        "estimate, the integration-point value and the other stress components do not affect it.",
+        "estimate, the C3D20 values, the integration-point value and the other stress components "
+        "do not affect it.",
         "",
-        *_stress_at_d_section(results),
+        *_c3d20_section(reduced, full),
+        *_stress_at_d_section(reduced),
         "## How the values are measured",
         "",
         "- **σ_yy(D)** is ccx's nodal σ_yy at point D, read from the `.frd`: ccx extrapolates "
@@ -106,6 +110,9 @@ def render_report(
         "- **Integration point** is the integration point of that element nearest D, printed "
         "to the `.dat` with `*EL PRINT`. It shows how much of the nodal value comes from "
         "extrapolation.",
+        "- **C3D20** (information) solves the same deck with full integration in place of "
+        "C3D20R's reduced integration. It shows how sensitive σ_yy(D) is to the integration "
+        "rule and never counts towards the verdict.",
         "",
     ]
     return "\n".join(lines)
@@ -127,7 +134,7 @@ def _parameters_section(params: BenchmarkParameters) -> list[str]:
         f"| Load | p = {params.pressure:g} MPa on the top face (z = +{half:g} mm) |",
         "| Supports | u_y = 0 on y = 0; u_x = 0 on x = 0; u_x = u_y = 0 on the outer face; "
         "u_z = 0 on line EE′ (the outer face at z = 0) |",
-        "| Elements | C3D20R, mapped mesh, midside nodes on the ellipses |",
+        "| Elements | C3D20R; C3D20 for information; mapped mesh, midside nodes on the ellipses |",
         f"| Top-face area (π/4)(a_o·b_o − a_i·b_i) | {top_face_area(params):.1f} mm² |",
         f"| Volume | {quarter_annulus_volume(params):.5e} mm³ |",
         "",
@@ -174,19 +181,29 @@ def _convergence_section(results: Sequence[BenchmarkResult]) -> list[str]:
         "Mesh levels are counted as elements around the annulus × across it × through the "
         "thickness. Each level halves the element size of the one before.",
         "",
-        *_richardson_lines(results_richardson_estimate(results)),
+        *_richardson_lines(results),
     ]
     return lines
 
 
-def _richardson_lines(estimate: float | None) -> list[str]:
+def _richardson_lines(results: Sequence[BenchmarkResult]) -> list[str]:
+    levels = _coarse_medium_fine(results)
+    values = [r.stress_yy_at_d for r in levels] if levels else None
+    order = observed_order(*values) if values else None
+    estimate = richardson_estimate(*values) if values else None
     lines = ["| Quantity | Value | Error (%) |", "|---|---:|---:|"]
     if estimate is None:
-        lines.append("| Richardson estimate (information) | not available | – |")
+        lines += [
+            "| Observed order p (information) | not available | – |",
+            "| Richardson estimate (information) | not available | – |",
+        ]
     else:
         error = (estimate - target_stress_at_d()) / target_stress_at_d() * 100
         value = f"{estimate:.3f} MPa | {error:+.2f} %".replace("-", "−")
-        lines.append(f"| Richardson estimate (information) | {value} |")
+        lines += [
+            f"| Observed order p (information) | {order:.2f} | – |",
+            f"| Richardson estimate (information) | {value} |",
+        ]
     lines += [
         "",
         "The Richardson estimate extrapolates σ_yy(D) from the coarse, medium and fine levels at "
@@ -202,6 +219,31 @@ def _richardson_lines(estimate: float | None) -> list[str]:
             f"value, more than {RICHARDSON_FLAG_PERCENT:g} %. This does not affect the verdict.",
             "",
         ]
+    return lines
+
+
+def _c3d20_section(
+    reduced: Sequence[BenchmarkResult], full: Sequence[BenchmarkResult]
+) -> list[str]:
+    reduced_by_level = {r.mesh_level.name: r for r in reduced}
+    lines = [
+        "## C3D20 (information)",
+        "",
+        "Each level solved again with full integration, beside its C3D20R σ_yy(D). For "
+        "information only: these values never count towards the verdict.",
+        "",
+        "| Mesh level | C3D20R σ_yy(D) (MPa) | C3D20 σ_yy(D) (MPa) | C3D20 error (%) "
+        "| C3D20 integration point σ_yy (MPa) |",
+        "|---|---:|---:|---:|---:|",
+    ]
+    for r in full:
+        match = reduced_by_level.get(r.mesh_level.name)
+        reduced_value = f"{match.stress_yy_at_d:.3f}" if match else "–"
+        lines.append(
+            f"| {r.mesh_level.label} | {reduced_value} | {r.stress_yy_at_d:.3f} "
+            f"| {r.stress_yy_at_d_error:+.2f} | {r.integration_point_stress_yy_at_d:.3f} |"
+        )
+    lines.append("")
     return lines
 
 

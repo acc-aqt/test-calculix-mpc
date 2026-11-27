@@ -1,7 +1,7 @@
 """Run the benchmark at the selected mesh levels and write the markdown report.
 
 Exit codes: 0 PASS (or no verdict because not all three mesh levels were run), 1 FAIL,
-2 ccx missing or failed (no report is written).
+2 ccx missing or failed, or a sanity guard tripped (no report is written).
 """
 
 import argparse
@@ -10,6 +10,7 @@ import sys
 from pathlib import Path
 
 from benchmark_parameters import LE10, MESH_LEVELS
+from deck import ELEMENT_TYPES
 from report import Verdict, render_report, verdict, verdict_text
 from runner import CcxError, ccx_version, find_ccx, run_benchmark
 
@@ -30,8 +31,10 @@ def main(argv: list[str] | None = None) -> int:
         version = ccx_version(ccx)
         results = []
         for name in args.levels:
-            print(f"Running mesh level {name} ...", flush=True)
-            results.append(run_benchmark(LEVELS_BY_NAME[name], LE10, args.work_dir, ccx))
+            for element_type in ELEMENT_TYPES:
+                print(f"Running mesh level {name}, {element_type} ...", flush=True)
+                level = LEVELS_BY_NAME[name]
+                results.append(run_benchmark(level, LE10, args.work_dir, ccx, element_type))
     except CcxError as error:
         print(f"{error}\nStopped; no report written.", file=sys.stderr)
         return 2
