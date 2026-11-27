@@ -38,6 +38,9 @@ class AnalyticalSolution:
     """Vlasov φ(L), the twist target."""
     quarter_span_warping_stress: float
     """Magnitude E·ω·φ''(L/4) at the flange tips, the warping stress target."""
+    quarter_span_flange_tip_warping_stresses: tuple[float, float, float, float]
+    """Signed σ_w(L/4) at the flange tips, top flange at z = −b/2 and +b/2, then bottom flange
+    at z = −b/2 and +b/2: the + − − + pattern for T about +x."""
     root_warping_stress: float
     """Magnitude E·ω·φ''(0), information only."""
     midspan_st_venant_shear_stress: float
@@ -69,6 +72,11 @@ def analytical_solution(params: BenchmarkParameters) -> AnalyticalSolution:
         st_venant_tip_twist=float(st_venant_twist_at(params, length)),
         tip_twist=float(twist_at(params, length)),
         quarter_span_warping_stress=float(e * omega * twist_curvature_at(params, length / 4)),
+        quarter_span_flange_tip_warping_stresses=tuple(
+            float(warping_stress_at(params, length / 4, y, z))
+            for y in (h_m / 2, -h_m / 2)
+            for z in (-s.flange_width / 2, s.flange_width / 2)
+        ),
         root_warping_stress=float(e * omega * twist_curvature_at(params, 0.0)),
         midspan_st_venant_shear_stress=float(
             g * s.flange_thickness * twist_rate_at(params, length / 2)

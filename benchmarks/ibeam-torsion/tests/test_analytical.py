@@ -99,6 +99,12 @@ def test_warping_stress_changes_sign_across_the_web_and_between_the_flanges():
     assert warping_stress_at(IPE200_TORSION, x, h_m / 2, 0.0) == 0.0
 
 
+def test_signed_flange_tip_targets_at_quarter_span_follow_the_plus_minus_minus_plus_pattern():
+    # Top -z, top +z, bottom -z, bottom +z.
+    expected = (58.68, -58.68, -58.68, 58.68)
+    assert SOLUTION.quarter_span_flange_tip_warping_stresses == pytest.approx(expected, rel=1e-3)
+
+
 def test_end_corrected_torsion_constant_for_information():
     # Flanges: 2 x 100 x 8.5^3 x (1 - 0.63 x 8.5/100) = 122825 x 0.946450 = 116247.7
     # Web: 183 x 5.6^3 x (1 - 0.63 x 5.6/183) = 32137.7 x 0.980721 = 31518.2
