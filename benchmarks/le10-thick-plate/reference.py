@@ -18,9 +18,8 @@ def target_stress_at_d() -> float:
 def top_face_area(params: BenchmarkParameters) -> float:
     """The quarter annulus between the inner and outer ellipses, (π/4)(a_o·b_o − a_i·b_i)."""
     outer, inner = params.outer, params.inner
-    return math.pi / 4 * (
-        outer.semi_axis_x * outer.semi_axis_y - inner.semi_axis_x * inner.semi_axis_y
-    )
+    ellipse_products = outer.semi_axis_x * outer.semi_axis_y - inner.semi_axis_x * inner.semi_axis_y
+    return math.pi / 4 * ellipse_products
 
 
 def quarter_annulus_volume(params: BenchmarkParameters) -> float:

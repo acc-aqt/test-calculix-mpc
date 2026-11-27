@@ -9,8 +9,8 @@ from dataclasses import dataclass
 from pathlib import Path
 
 NodalValues = dict[int, tuple[float, ...]]
-SXX, SZX = 0, 5
-"""Positions in a STRESS record (sxx, syy, szz, sxy, syz, szx)."""
+SYY = 1
+"""Position of σ_yy in a STRESS record (sxx, syy, szz, sxy, syz, szx)."""
 
 _KEY = slice(0, 3)
 _ID = slice(3, 13)
