@@ -5,6 +5,7 @@ import pytest
 
 from analytical import (
     analytical_solution,
+    bending_stress_at,
     euler_bernoulli_deflection_at,
     timoshenko_deflection_at,
 )
@@ -88,13 +89,29 @@ def test_deflection_curves_at_midspan():
     assert euler_bernoulli_deflection_at(IPE200_CANTILEVER, 1500.0) == pytest.approx(
         7.25668, rel=1e-5
     )
-    assert timoshenko_deflection_at(IPE200_CANTILEVER, 1500.0) == pytest.approx(
-        7.42986, rel=1e-5
-    )
+    assert timoshenko_deflection_at(IPE200_CANTILEVER, 1500.0) == pytest.approx(7.42986, rel=1e-5)
 
 
 def test_deflection_curves_accept_arrays_of_positions():
     x = np.array([0.0, 1500.0, 3000.0])
     assert timoshenko_deflection_at(IPE200_CANTILEVER, x) == pytest.approx(
         [0.0, 7.42986, 23.5677], rel=1e-5
+    )
+
+
+def test_bending_stress_is_tension_on_top_and_compression_below_under_the_tip_load():
+    # M(x) = P (L - x). Midspan outer fibre: 1e4 x 1500 x 100 / 18455902.2 = 81.275 MPa;
+    # root outer fibre twice that, 162.55 MPa.
+    assert bending_stress_at(IPE200_CANTILEVER, 1500.0, 100.0) == pytest.approx(81.275, rel=1e-5)
+    assert bending_stress_at(IPE200_CANTILEVER, 1500.0, -100.0) == pytest.approx(-81.275, rel=1e-5)
+    assert bending_stress_at(IPE200_CANTILEVER, 0.0, 100.0) == pytest.approx(162.55, rel=1e-5)
+    assert bending_stress_at(IPE200_CANTILEVER, 0.0, -100.0) == pytest.approx(-162.55, rel=1e-5)
+    assert bending_stress_at(IPE200_CANTILEVER, 3000.0, 100.0) == 0.0
+    assert bending_stress_at(IPE200_CANTILEVER, 1500.0, 0.0) == 0.0
+
+
+def test_bending_stress_accepts_arrays_of_positions():
+    x = np.array([0.0, 1500.0, 3000.0])
+    assert bending_stress_at(IPE200_CANTILEVER, x, 100.0) == pytest.approx(
+        [162.55, 81.275, 0.0], rel=1e-5
     )

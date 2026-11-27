@@ -2,7 +2,7 @@ import pytest
 
 from analytical import analytical_solution
 from benchmark_parameters import COARSE, FINE, IPE200_CANTILEVER, MEDIUM
-from report import Verdict, verdict
+from report import Verdict, render_report, verdict
 from runner import BenchmarkResult
 
 # Targets for the no-fillet IPE 200 (see test_analytical.py): Timoshenko 23.5677 mm, 81.2748 MPa.
@@ -57,3 +57,8 @@ def test_stress_errors_are_signed_so_a_flipped_flange_sign_fails():
     assert flipped.midspan_top_stress_error == pytest.approx(-200)
     assert flipped.midspan_bottom_stress_error == pytest.approx(-200)
     assert verdict([flipped]) is Verdict.FAIL
+
+
+def test_report_links_to_the_figures_page():
+    text = render_report([result(FINE)], IPE200_CANTILEVER, "Version 2.24")
+    assert "](FIGURES.md)" in text

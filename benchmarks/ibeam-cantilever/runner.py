@@ -1,6 +1,5 @@
 """Benchmark runner: deck -> ccx -> .frd -> result record for one mesh level."""
 
-import math
 import os
 import re
 import shutil
@@ -8,6 +7,8 @@ import subprocess
 import sys
 from dataclasses import dataclass
 from pathlib import Path
+
+import numpy as np
 
 from analytical import AnalyticalSolution, analytical_solution
 from benchmark_parameters import BenchmarkParameters, MeshLevel
@@ -18,9 +19,10 @@ from deck import (
     REFERENCE_NODE,
     ROOT_FACE,
     WEB_CENTRELINE_TIP_NODE,
+    Deck,
     generate_deck,
 )
-from frd import NodalValues, read_nodal_results
+from frd import FrdResults, NodalValues, read_frd
 
 JOB_NAME = "ibeam"
 
@@ -112,9 +114,22 @@ def run_benchmark(
 ) -> BenchmarkResult:
     deck = generate_deck(params, level)
     frd = run_ccx(deck.text, work_dir / level.name, ccx)
-    results = read_nodal_results(frd)
-    displacements, stresses = results["DISP"], results["STRESS"]
-    printed = read_printed_displacements(frd.with_suffix(".dat"))[REFERENCE_NODE]
+    _, dat = result_files(level, work_dir)
+    return benchmark_result(level, params, deck, read_frd(frd), dat)
+
+
+def result_files(level: MeshLevel, work_dir: Path) -> tuple[Path, Path]:
+    """The .frd and .dat a solved mesh level leaves in work_dir."""
+    job = work_dir / level.name / JOB_NAME
+    return job.with_suffix(".frd"), job.with_suffix(".dat")
+
+
+def benchmark_result(
+    level: MeshLevel, params: BenchmarkParameters, deck: Deck, frd: FrdResults, dat: Path
+) -> BenchmarkResult:
+    """The result record of a mesh level from its deck and the .frd and .dat ccx wrote."""
+    displacements, stresses = frd.nodal_results["DISP"], frd.nodal_results["STRESS"]
+    printed = read_printed_displacements(dat)[REFERENCE_NODE]
     (reference,) = deck.node_sets[REFERENCE_NODE]
     (web_tip,) = deck.node_sets[WEB_CENTRELINE_TIP_NODE]
     return BenchmarkResult(
@@ -125,7 +140,7 @@ def run_benchmark(
         web_centreline_tip_uy=displacements[web_tip][1],
         midspan_top_sxx_width_mean=_mean_sxx(stresses, deck.node_sets[MIDSPAN_TOP_FLANGE]),
         midspan_bottom_sxx_width_mean=_mean_sxx(stresses, deck.node_sets[MIDSPAN_BOTTOM_FLANGE]),
-        root_peak_von_mises=max(_von_mises(stresses[n]) for n in deck.node_sets[ROOT_FACE]),
+        root_peak_von_mises=max(von_mises(stresses[n]) for n in deck.node_sets[ROOT_FACE]),
         analytical=analytical_solution(params),
     )
 
@@ -138,7 +153,9 @@ def _mean_sxx(stresses: NodalValues, nodes: tuple[int, ...]) -> float:
     return sum(stresses[n][0] for n in nodes) / len(nodes)
 
 
-def _von_mises(stress: tuple[float, ...]) -> float:
-    sxx, syy, szz, sxy, syz, szx = stress[:6]
+def von_mises(stress) -> float | np.ndarray:
+    """Von Mises stress of one (sxx, syy, szz, sxy, syz, szx) record, or of each row of an
+    (n, 6) array."""
+    sxx, syy, szz, sxy, syz, szx = np.moveaxis(np.asarray(stress)[..., :6], -1, 0)
     normal = (sxx - syy) ** 2 + (syy - szz) ** 2 + (szz - sxx) ** 2
-    return math.sqrt(normal / 2 + 3 * (sxy**2 + syz**2 + szx**2))
+    return np.sqrt(normal / 2 + 3 * (sxy**2 + syz**2 + szx**2))

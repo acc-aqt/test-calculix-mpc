@@ -47,6 +47,8 @@ micromamba run -p "$HOME/micromamba/envs/calculix-bench" ruff check
 
 Configuration for both is in `pyproject.toml`. The end-to-end tests run the real `ccx` (coarse
 and medium mesh levels, a few seconds) and are skipped with a message when `ccx` isn't found.
+The `plots.py` smoke test and the `renders.py` tests are also skipped without matplotlib or
+PyVista.
 
 ## Running the benchmark
 
@@ -89,6 +91,30 @@ finish the job. On exit code 2 the command prints the `*ERROR` lines and writes 
 Spec #1's "I ≈ 1.943×10⁷ mm⁴, δ_EB ≈ 22.06 mm, shear adds ~5 %" are figures for the rolled section
 with fillets. The no-fillet section modelled here has I ≈ 1.846×10⁷ mm⁴, δ_EB ≈ 23.22 mm and
 δ_T ≈ 23.57 mm, so shear adds about 1.5 %.
+
+## Figures
+
+The figures and their captions are on [FIGURES.md](FIGURES.md); the PNGs are in `figures/`. Both
+are generated and committed. To regenerate them, run the benchmark first (it leaves the solver
+output in `work/`) and then the figures command, from this folder:
+
+```sh
+micromamba run -p "$HOME/micromamba/envs/calculix-bench" python benchmark.py
+micromamba run -p "$HOME/micromamba/envs/calculix-bench" python plots.py
+```
+
+`plots.py` reads the `.frd` and `.dat` of every mesh level and doesn't run `ccx` (about ten
+seconds). Figures 1-4 are 3D views that `renders.py` draws off-screen with PyVista; figures 5-8
+are matplotlib charts. Options:
+
+- `--work-dir <dir>` reads the solver output from another folder, as for `benchmark.py`.
+- `--output-dir <dir>` writes `figures/` and `FIGURES.md` somewhere else.
+
+Exit codes: `0` figures written, `1` when a mesh level's `.frd` or `.dat` is missing. Then the
+command lists the missing files, tells you to run `benchmark.py` first and writes nothing.
+
+To add a figure, write a function that draws it to the given path and returns its caption, and
+add a `(number, file slug, title, function)` entry to `FIGURES` in `plots.py`.
 
 ## Running `ccx`
 
@@ -212,4 +238,5 @@ Differences, and why they are not bugs in the benchmark:
 
 Generated decks and solver output (`*.inp`, `*.frd`, `*.dat`, `*.sta`, `*.cvg`, `*.12d`,
 `spooles.out`), the `work/` folder for solver runs and the MCP server's `.calculix-mcp/` folder
-are ignored by git (see `.gitignore`).
+are ignored by git (see `.gitignore`). The generated `REPORT.md`, `FIGURES.md` and `figures/` are
+committed so that they render on GitHub.
