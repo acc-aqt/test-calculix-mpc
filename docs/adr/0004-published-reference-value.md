@@ -12,10 +12,10 @@ The first three benchmarks (ADR 0001, ADR 0002, ADR 0003) check CalculiX against
 
 - **Target.** The LE10 benchmark checks σ_yy(D) against the published value −5.38 MPa. The reference module returns it as a constant; nothing in the repo derives it.
 - **Provenance.** The value is taken from four vendor verification documents that agree on it:
-  - the Abaqus Benchmarks Manual, LE10 thick plate pressure;
-  - Altair OptiStruct verification, NAFEMS LE10;
-  - Seamplex/Fino, case 012 (NAFEMS LE10);
-  - the COMSOL Application Gallery thick_plate model.
+  - the Abaqus Benchmarks Manual, [LE10 thick plate pressure](https://abaqus.uclouvain.be/English/SIMACAEBMKRefMap/simabmk-c-le10.htm);
+  - Altair OptiStruct verification, [NAFEMS LE10](https://help.altair.com/hwsolvers/os/topics/solvers/os/nafems_test_problem_le10_r.htm);
+  - Seamplex/Fino, [case 012 (NAFEMS LE10)](https://www.seamplex.com/fino/cases/012-nafems-le10);
+  - the COMSOL [thick_plate model](https://doc.comsol.com/6.4/doc/com.comsol.help.models.sme.thick_plate/thick_plate.html).
 
   The primary source, NAFEMS *The Standard NAFEMS Benchmarks* (TNSB) Rev. 3, was not consulted. The report says so.
 - **Sign convention.** The target is signed and compressive, −5.38 MPa. Some sources quote the magnitude 5.38 MPa for "the stress at D". The error is signed against the signed target, as in the other benchmarks, so a result with the wrong sign has an error near −200 % and cannot pass.
