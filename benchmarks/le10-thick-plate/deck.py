@@ -1,5 +1,5 @@
-"""CalculiX input deck for the LE10 thick plate: a mapped C3D20R mesh of the quarter elliptic
-annulus, the LE10 supports, a pressure on the top face, and output.
+"""CalculiX input deck for the LE10 thick plate: a mapped C3D20R or C3D20 mesh of the quarter
+elliptic annulus, the LE10 supports, a pressure on the top face, and output.
 
 Axes: x and y in the plane of the plate, z through the thickness with the mid-plane at z = 0.
 The hole edge is the inner ellipse, point D is at (a_i, 0, +t/2) and A at (0, b_i, +t/2).
@@ -17,6 +17,12 @@ from collections.abc import Callable
 from dataclasses import dataclass
 
 from benchmark_parameters import BenchmarkParameters, MeshLevel
+
+C3D20R = "C3D20R"
+"""20-node brick, reduced integration: the element type the verdict is decided on."""
+C3D20 = "C3D20"
+"""20-node brick, full integration: solved for information only."""
+ELEMENT_TYPES = (C3D20R, C3D20)
 
 Y0_FACE = "YSYMM"
 X0_FACE = "XSYMM"
@@ -67,7 +73,9 @@ class Deck:
         return len(self.elements)
 
 
-def generate_deck(params: BenchmarkParameters, level: MeshLevel) -> Deck:
+def generate_deck(
+    params: BenchmarkParameters, level: MeshLevel, element_type: str = C3D20R
+) -> Deck:
     _check_divisions(level)
     mesh = _Mesh(params, level)
     outer = 2 * level.across_divisions
@@ -89,7 +97,7 @@ def generate_deck(params: BenchmarkParameters, level: MeshLevel) -> Deck:
 
     lines = ["*HEADING", f"NAFEMS LE10 thick plate, mesh level {level.name}", "*NODE, NSET=NALL"]
     lines += [f"{nid}, {x!r}, {y!r}, {z!r}" for nid, (x, y, z) in mesh.nodes.items()]
-    lines.append(f"*ELEMENT, TYPE=C3D20R, ELSET={ALL_ELEMENTS}")
+    lines.append(f"*ELEMENT, TYPE={element_type}, ELSET={ALL_ELEMENTS}")
     for eid, nodes in enumerate(mesh.elements, start=1):
         ids = [str(eid), *map(str, nodes)]
         lines += [", ".join(ids[:16]) + ",", ", ".join(ids[16:])]

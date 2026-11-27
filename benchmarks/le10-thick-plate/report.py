@@ -3,6 +3,7 @@
 from collections.abc import Sequence
 
 from benchmark_parameters import BenchmarkParameters
+from deck import C3D20, C3D20R
 from reference import quarter_annulus_volume, target_stress_at_d, top_face_area
 from runner import BenchmarkResult
 
@@ -13,6 +14,8 @@ ADR = "[ADR 0004](../../docs/adr/0004-published-reference-value.md)"
 def render_report(
     results: Sequence[BenchmarkResult], params: BenchmarkParameters, ccx_version: str
 ) -> str:
+    reduced = [r for r in results if r.element_type == C3D20R]
+    full = [r for r in results if r.element_type == C3D20]
     lines = [
         "# NAFEMS LE10 thick plate benchmark report",
         "",
@@ -23,8 +26,9 @@ def render_report(
         "",
         *_parameters_section(params),
         *_target_section(params),
-        *_levels_section(results),
-        *_stress_at_d_section(results),
+        *_levels_section(reduced),
+        *_c3d20_section(reduced, full),
+        *_stress_at_d_section(reduced),
         "## How the values are measured",
         "",
         "- **σ_yy(D)** is ccx's nodal σ_yy at point D, read from the `.frd`: ccx extrapolates "
@@ -33,6 +37,9 @@ def render_report(
         "- **Integration point** is the integration point of that element nearest D, printed "
         "to the `.dat` with `*EL PRINT`. It shows how much of the nodal value comes from "
         "extrapolation.",
+        "- **C3D20** (information) solves the same deck with full integration in place of "
+        "C3D20R's reduced integration. It shows how sensitive σ_yy(D) is to the integration "
+        "rule and never counts towards the verdict.",
         "",
     ]
     return "\n".join(lines)
@@ -54,7 +61,7 @@ def _parameters_section(params: BenchmarkParameters) -> list[str]:
         f"| Load | p = {params.pressure:g} MPa on the top face (z = +{half:g} mm) |",
         "| Supports | u_y = 0 on y = 0; u_x = 0 on x = 0; u_x = u_y = 0 on the outer face; "
         "u_z = 0 on line EE′ (the outer face at z = 0) |",
-        "| Elements | C3D20R, mapped mesh, midside nodes on the ellipses |",
+        "| Elements | C3D20R; C3D20 for information; mapped mesh, midside nodes on the ellipses |",
         f"| Top-face area (π/4)(a_o·b_o − a_i·b_i) | {top_face_area(params):.1f} mm² |",
         f"| Volume | {quarter_annulus_volume(params):.5e} mm³ |",
         "",
@@ -102,6 +109,31 @@ def _levels_section(results: Sequence[BenchmarkResult]) -> list[str]:
         "thickness.",
         "",
     ]
+    return lines
+
+
+def _c3d20_section(
+    reduced: Sequence[BenchmarkResult], full: Sequence[BenchmarkResult]
+) -> list[str]:
+    reduced_by_level = {r.mesh_level.name: r for r in reduced}
+    lines = [
+        "## C3D20 (information)",
+        "",
+        "Each level solved again with full integration, beside its C3D20R σ_yy(D). For "
+        "information only: these values never count towards the verdict.",
+        "",
+        "| Mesh level | C3D20R σ_yy(D) (MPa) | C3D20 σ_yy(D) (MPa) | C3D20 error (%) "
+        "| C3D20 integration point σ_yy (MPa) |",
+        "|---|---:|---:|---:|---:|",
+    ]
+    for r in full:
+        match = reduced_by_level.get(r.mesh_level.name)
+        reduced_value = f"{match.stress_yy_at_d:.3f}" if match else "–"
+        lines.append(
+            f"| {r.mesh_level.label} | {reduced_value} | {r.stress_yy_at_d:.3f} "
+            f"| {r.stress_yy_at_d_error:+.2f} | {r.integration_point_stress_yy_at_d:.3f} |"
+        )
+    lines.append("")
     return lines
 
 
