@@ -1,7 +1,9 @@
 import os
 
 import pytest
+from records import result
 
+import benchmark
 from benchmark import main
 from runner import find_ccx
 
@@ -49,6 +51,40 @@ def run_coarse(tmp_path, ccx):
         ]
     )  # fmt: skip
     return code, report
+
+
+def test_failing_fine_level_writes_the_report_and_exits_1(tmp_path, monkeypatch, capsys):
+    # Hand-made results whose fine level is 5 % off the published value stand in for the solves.
+    ratios = {"coarse": 1.2, "medium": 1.1, "fine": 1.05}
+    monkeypatch.setattr(
+        benchmark,
+        "run_benchmark",
+        lambda level, params, work_dir, ccx: result(level, ratios[level.name]),
+    )
+    report = tmp_path / "REPORT.md"
+    ccx = fake_ccx(tmp_path, "exit 1")
+
+    code = main(["--report", str(report), "--work-dir", str(tmp_path / "work"), "--ccx", str(ccx)])
+
+    assert code == 1
+    assert "- Verdict: **FAIL**" in report.read_text()
+    assert "Verdict: FAIL" in capsys.readouterr().out
+
+
+def test_passing_run_exits_0(tmp_path, monkeypatch, capsys):
+    ratios = {"coarse": 1.2, "medium": 1.1, "fine": 1.02}
+    monkeypatch.setattr(
+        benchmark,
+        "run_benchmark",
+        lambda level, params, work_dir, ccx: result(level, ratios[level.name]),
+    )
+    report = tmp_path / "REPORT.md"
+    ccx = fake_ccx(tmp_path, "exit 1")
+
+    code = main(["--report", str(report), "--work-dir", str(tmp_path / "work"), "--ccx", str(ccx)])
+
+    assert code == 0
+    assert "Verdict: PASS" in capsys.readouterr().out
 
 
 def test_non_executable_ccx_stops_without_writing_a_report(tmp_path, capsys):

@@ -225,8 +225,11 @@ A target taken from published verification documents rather than derived in the 
 _Avoid_: Reference solution, NAFEMS value, expected value
 
 **Richardson estimate**:
-The converged σ_yy(D) extrapolated from the coarse, medium and fine C3D20R levels at a constant refinement ratio of 2, reported beside the published reference value and flagged when more than 2 % from it.
+The converged σ_yy(D) extrapolated from the coarse, medium and fine C3D20R levels at a constant refinement ratio of 2, reported beside the published reference value and flagged when more than 2 % from it. The flag is for information and does not affect the LE10 verdict.
 _Avoid_: Extrapolated value, converged value
+
+**LE10 verdict**:
+PASS when the fine C3D20R level's σ_yy(D) is within ±3 % of the published reference value, with the same sign, and |fine − medium| < |medium − coarse|; otherwise FAIL. There is no verdict unless all three mesh levels were run.
 
 **Sanity guard**:
 A check on the solved model that stops a run with exit code 2 and no report when the deck is quietly wrong. The LE10 guards check the mesh volume against the exact quarter-annulus volume and the total reaction on line EE′ against the applied load. The zero-twist guard of the torsion benchmark is one too.

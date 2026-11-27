@@ -2,6 +2,7 @@ import pytest
 
 from benchmark_parameters import COARSE, FINE, LE10, MEDIUM
 from deck import generate_deck
+from report import Verdict, verdict
 from runner import CcxError, find_ccx, run_benchmark, run_ccx
 
 CCX = find_ccx()
@@ -35,6 +36,15 @@ def surface_traction_components(result):
     """|σ_xx|, |τ_xy|, |τ_yz| and |τ_zx| at D, which vanish in the exact solution."""
     sxx, _, _, sxy, syz, szx = result.stress_at_d
     return tuple(abs(s) for s in (sxx, sxy, syz, szx))
+
+
+@needs_ccx
+def test_sigma_yy_at_d_converges_over_coarse_medium_and_fine(levels):
+    # Prototype: -5.424, -5.387, -5.362 MPa, so the steps shrink from 0.037 to 0.025 MPa.
+    coarse, medium, fine = (r.stress_yy_at_d for r in levels)
+    assert abs(fine - medium) < abs(medium - coarse)
+    assert fine == pytest.approx(-5.362, abs=0.005)
+    assert verdict(levels) is Verdict.PASS
 
 
 @needs_ccx
