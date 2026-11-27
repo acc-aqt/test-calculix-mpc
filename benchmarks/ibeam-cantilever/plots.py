@@ -7,7 +7,6 @@ order. Exit codes: 0 figures written, 1 a mesh level's results are missing (noth
 import argparse
 import sys
 from collections.abc import Sequence
-from dataclasses import dataclass
 from pathlib import Path
 
 import matplotlib
@@ -22,11 +21,11 @@ from analytical import (
     timoshenko_deflection_at,
 )
 from benchmark_parameters import IPE200_CANTILEVER, MESH_LEVELS, BenchmarkParameters
-from figure_data import FigureSeries, figure_series
-from frd import FrdResults, read_frd
+from figure_data import FigureSeries, MeshLevelResults, figure_series
+from frd import read_frd
 from renders import deformed_figure, meshes_figure, model_figure, stress_figure
 from report import TOLERANCE_PERCENT
-from runner import BenchmarkResult, read_benchmark_result, result_files
+from runner import read_benchmark_result, result_files
 
 HERE = Path(__file__).resolve().parent
 LEVELS_BY_NAME = {level.name: level for level in MESH_LEVELS}
@@ -65,13 +64,6 @@ STYLE = {
     "lines.linewidth": 1.5,
     "lines.markersize": 5,
 }
-
-
-@dataclass(frozen=True)
-class MeshLevelResults:
-    result: BenchmarkResult
-    frd: FrdResults
-    series: FigureSeries
 
 
 def main(argv: list[str] | None = None) -> int:

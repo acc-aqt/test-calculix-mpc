@@ -38,6 +38,15 @@ class FigureSeries:
     convergence: ConvergencePoint
 
 
+@dataclass(frozen=True)
+class MeshLevelResults:
+    """Everything the figures draw from one solved mesh level."""
+
+    result: BenchmarkResult
+    frd: FrdResults
+    series: FigureSeries
+
+
 def figure_series(
     result: BenchmarkResult, frd: FrdResults, params: BenchmarkParameters
 ) -> FigureSeries:

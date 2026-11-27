@@ -1,11 +1,8 @@
 """3D views of the solid I-beam (figures 1-4): PyVista renders off-screen from the .frd, laid
 out with matplotlib so titles, legends and colour bars match the 2D figures."""
 
-from __future__ import annotations
-
 from collections.abc import Callable, Sequence
 from pathlib import Path
-from typing import TYPE_CHECKING
 
 import numpy as np
 import pyvista as pv
@@ -24,10 +21,8 @@ from deck import (
     WEB_CENTRELINE_TIP_NODE,
     generate_deck,
 )
+from figure_data import MeshLevelResults
 from frd import FrdResults
-
-if TYPE_CHECKING:
-    from plots import MeshLevelResults
 
 TIP_DROP_FRACTION = 0.1
 RENDER_SIZE = (2400, 1600)
