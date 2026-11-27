@@ -67,10 +67,6 @@ def read_frd(path: Path) -> FrdResults:
     )
 
 
-def read_nodal_results(path: Path) -> dict[str, NodalValues]:
-    return read_frd(path).nodal_results
-
-
 def _connectivity(line: str) -> list[int]:
     text = line.rstrip("\n")
     return [
