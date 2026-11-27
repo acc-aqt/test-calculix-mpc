@@ -33,7 +33,7 @@ class CcxError(RuntimeError):
     """ccx did not finish the job, so there are no results to trust."""
 
 
-class ZeroTwistError(CcxError):
+class ZeroTwistError(RuntimeError):
     """ccx finished, but the beam did not twist: the torque was lost on the way in."""
 
 
