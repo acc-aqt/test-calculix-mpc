@@ -18,6 +18,7 @@ from deck import LINE_EE, POINT_D
 from figure_data import MeshLevelResults
 from frd import SYY, FrdResults
 from palette import BLUE, EDGES, GREEN, INK, ORANGE, SECONDARY_INK, STEEL
+from report import signed
 
 RENDER_SIZE = (2400, 1600)
 SYMMETRY = BLUE
@@ -100,7 +101,7 @@ def mesh_figure(levels: Sequence[MeshLevelResults], params: BenchmarkParameters,
         "thickness, seen from the hole side above the plate: the x = 0 face on the left, the "
         "hole face in the middle and the y = 0 face on the right. Each line across the annulus "
         "joins the inner and outer ellipse at one parametric angle θ, (a cos θ, b sin θ), "
-        "with uniform spacing, so the elements grow from the hole to the outer edge and from "
+        "with uniform spacing, so the elements grow from the hole to the outer ellipse and from "
         "D (θ = 0) towards A (θ = 90°). All elements are 20-node bricks whose midside nodes "
         "sit on the ellipses, so each edge around the annulus is drawn as the quadratic curve "
         "through its midside node; the midside nodes themselves are not drawn. Each level "
@@ -205,14 +206,14 @@ def stress_figure(
         "from the hole side above the plate. Right: the y = 0 symmetry face, with the hole "
         "face on its left and D at their shared top corner. Around the hole the plate bends "
         "over the support: σ_yy is compressive (blue) on the loaded top face at D, "
-        f"{_signed(level.result.stress_yy_at_d, 2)} MPa, and tensile (red) on the bottom "
+        f"{signed(level.result.stress_yy_at_d, 2)} MPa, and tensile (red) on the bottom "
         "face beneath it. Towards the outer face, which is held in its plane, the bending "
         "reverses, tension on the top and compression on the bottom. The specks at the right "
-        "end of the y = 0 face, at mid-thickness on the outer face, are the singular support "
-        f"line EE′. The colour range is ±{STRESS_LIMIT:g} MPa; only nodes on the top and "
-        f"bottom outer edges with y ≥ {beyond[:, 1].min():.0f} mm go beyond it, up to "
-        f"{_signed(syy[np.argmax(np.abs(syy))], 1)} MPa at (x, y, z) = ({peak[0]:g}, "
-        f"{peak[1]:g}, {_signed(peak[2], 0, plus=True)}) mm."
+        "end of the y = 0 face, at mid-thickness on the outer face, are the singular line "
+        f"EE′. The colour range is ±{STRESS_LIMIT:g} MPa; only nodes on the top and "
+        f"bottom edges of the outer face with y ≥ {beyond[:, 1].min():.0f} mm go beyond it, up to "
+        f"{signed(syy[np.argmax(np.abs(syy))], 1)} MPa at (x, y, z) = ({peak[0]:g}, "
+        f"{peak[1]:g}, {signed(peak[2], 0, plus=True)}) mm."
     )
 
 
@@ -245,10 +246,10 @@ def displacement_figure(
     return (
         f"Out-of-plane displacement u_z on the {name} mesh, drawn on the plate deformed "
         f"{factor:g} times true scale, darker where it moves further down. The plate rests "
-        "on line EE′ at the outer edge, so u_z is zero on that line and the pressure pushes "
-        f"the plate down towards the hole, most at the hole face on the y axis near A: "
-        f"{_signed(uz.min(), 3)} mm at (x, y, z) = ({lowest[0]:g}, {lowest[1]:g}, "
-        f"{_signed(lowest[2], 1, plus=True)}) mm. Left: from the hole "
+        "on line EE′, at mid-thickness on the outer face, so u_z is zero on that line and the "
+        "pressure pushes the plate down towards the hole, most at the hole face on the y axis "
+        f"near A: {signed(uz.min(), 3)} mm at (x, y, z) = ({lowest[0]:g}, {lowest[1]:g}, "
+        f"{signed(lowest[2], 1, plus=True)}) mm. Left: from the hole "
         "side above the plate. Right: from outside, with the outer face."
     )
 
@@ -286,11 +287,6 @@ def _colorbar(fig, axes, cmap, clim, label: str, extend: str = "neither") -> Non
         aspect=30,
         extend=extend,
     )
-
-
-def _signed(value: float, digits: int, plus: bool = False) -> str:
-    text = f"{value:+.{digits}f}" if plus else f"{value:.{digits}f}"
-    return text.replace("-", "−")
 
 
 def _draw_plan(ax, params: BenchmarkParameters) -> None:

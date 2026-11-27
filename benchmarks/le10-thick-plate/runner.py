@@ -14,11 +14,14 @@ from benchmark_parameters import BenchmarkParameters, MeshLevel
 from dat import read_printed_integration_points, read_printed_total_forces
 from deck import C3D20R, LINE_EE, POINT_D, Deck, generate_deck, mesh_volume
 from frd import SYY, FrdResults, read_frd
-from reference import quarter_annulus_volume, target_stress_at_d, top_face_area
+from reference import quarter_annulus_volume, stress_at_d_error, top_face_area
 
 JOB_NAME = "le10"
-GUARD_TOLERANCE = 1e-3
-"""Relative tolerance of the mesh-volume and reaction-balance guards."""
+VOLUME_GUARD_TOLERANCE = 1e-4
+"""Relative tolerance of the mesh-volume guard, tight enough to catch straight-chord midside
+nodes on the fine level (0.071 % short)."""
+REACTION_GUARD_TOLERANCE = 1e-3
+"""Relative tolerance of the reaction-balance guard."""
 _DAT_SYY = 1
 """Position of σ_yy in a .dat stress record (sxx, syy, szz, sxy, sxz, syz)."""
 
@@ -35,7 +38,7 @@ class GuardError(CcxError):
 class BenchmarkResult:
     mesh_level: MeshLevel
     element_type: str
-    """C3D20R decides the verdict; C3D20 is information only."""
+    """One of deck.ELEMENT_TYPES; only VERDICT_ELEMENT_TYPE counts towards the verdict."""
     element_count: int
     node_count: int
     stress_at_d: tuple[float, float, float, float, float, float]
@@ -57,8 +60,7 @@ class BenchmarkResult:
     @property
     def stress_yy_at_d_error(self) -> float:
         """Signed % error against the published σ_yy(D), so a flipped sign gives about −200 %."""
-        target = target_stress_at_d()
-        return (self.stress_yy_at_d - target) / target * 100
+        return stress_at_d_error(self.stress_yy_at_d)
 
     @property
     def von_mises_at_d(self) -> float:
@@ -173,21 +175,22 @@ def benchmark_result(
 
 def _check_mesh_volume(result: BenchmarkResult, params: BenchmarkParameters) -> None:
     exact = quarter_annulus_volume(params)
-    if abs(result.mesh_volume - exact) > GUARD_TOLERANCE * exact:
+    if abs(result.mesh_volume - exact) > VOLUME_GUARD_TOLERANCE * exact:
         raise GuardError(
             f"mesh-volume guard: the elements hold {result.mesh_volume:.6g} mm³, not the "
-            f"{exact:.6g} mm³ of the quarter annulus (tolerance {GUARD_TOLERANCE:.1%}), so the "
-            "mesh does not follow the LE10 geometry"
+            f"{exact:.6g} mm³ of the quarter annulus (tolerance {VOLUME_GUARD_TOLERANCE:.2%}), "
+            "so the mesh does not follow the LE10 geometry"
         )
 
 
 def _check_reaction_balance(result: BenchmarkResult, params: BenchmarkParameters) -> None:
     load = params.pressure * top_face_area(params)
-    if abs(result.reaction_z_on_ee - load) > GUARD_TOLERANCE * load:
+    if abs(result.reaction_z_on_ee - load) > REACTION_GUARD_TOLERANCE * load:
         raise GuardError(
             f"reaction-balance guard: the total RF_z on line EE′ is "
             f"{result.reaction_z_on_ee:.6g} N, not the {load:.6g} N of the pressure on the top "
-            f"face (tolerance {GUARD_TOLERANCE:.1%}), so the load did not all reach the plate"
+            f"face (tolerance {REACTION_GUARD_TOLERANCE:.1%}), so the load did not all reach the "
+            "plate"
         )
 
 

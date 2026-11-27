@@ -41,14 +41,14 @@ Without a formula to fall back on, a quietly wrong deck could still land near �
 sanity guards check the solved model and stop the run with exit code 2 and no report:
 
 - **Mesh volume.** The volume of the elements, integrated from their node positions with the
-  20-node shape functions so that curved edges count, must be within 0.1 % of the exact quarter
+  20-node shape functions so that curved edges count, must be within 0.01 % of the exact quarter
   annulus, (π/4)(a_o·b_o − a_i·b_i)·t = 3.26922·10⁹ mm³.
 - **Reaction balance.** The total RF_z on line EE′, printed to the `.dat`, must be within 0.1 %
   of the applied load p·(π/4)(a_o·b_o − a_i·b_i) = 5 448 699.8 N.
 
-The tests solve two broken variants of the coarse deck (`tests/broken_variants.py`): one with
-straight-chord midside nodes, which trips the volume guard, and one with only half the top face
-loaded, which trips the reaction guard.
+The tests solve broken variants of the deck (`tests/broken_variants.py`): one with
+straight-chord midside nodes on the coarse and on the fine level, which trips the volume guard,
+and one with only half of the coarse top face loaded, which trips the reaction guard.
 
 ## Setup
 
@@ -168,7 +168,7 @@ Claude Code session with the `calculix` tools loaded:
 4. `frd_query_set` on the same `.frd` with `inp_path=work/fine/C3D20R/le10.inp`,
    `set=POINTD`, `quantity=stress`, `top_n=1`.
 
-Outcome on the fine C3D20R level (ccx 2.24, 2026-11-27). The server's root was the IPE 200
+Results on the fine C3D20R level (ccx 2.24, 2026-11-27). The server's root was the IPE 200
 folder, so the fine deck and `.frd` from the Python run were copied into an ignored `work/`
 folder below it; the MCP didn't solve the deck itself.
 
@@ -195,8 +195,8 @@ Differences, and why they are not bugs in the benchmark:
   comparison holds here; it wouldn't on a point with real shear.
 - **The MCP volume is 0.071 % short.** `mesh_check` uses corner nodes only, so each curved edge
   counts as a straight chord; its note says so. The benchmark's volume guard integrates the
-  midside nodes too and is exact to 4·10⁻⁶ %. The MCP volume is within the guard's 0.1 %
-  tolerance, but it can't tell a deck with midside nodes on the ellipses from one with
+  midside nodes too and is exact to 4·10⁻⁶ %. The MCP volume would fail the guard's 0.01 %
+  tolerance, and it can't tell a deck with midside nodes on the ellipses from one with
   straight-chord midside nodes: on the fine level the two give the same corner-node volume to the
   last digit (see the upstream findings).
 - **The whole-model von Mises peak is on line EE′.** Node 14489 is the end of line EE′ on the
@@ -210,10 +210,11 @@ Differences, and why they are not bugs in the benchmark:
 The IPE 200 README's [Caveats](../ibeam-cantilever/README.md#caveats) on the root prefix, dylibs,
 `ccx` exit codes, threads and extra output apply here unchanged. In addition:
 
-- **The volume guard is weakest on the fine level.** Straight-chord midside nodes cut the
-  volume by 1.14 % on the coarse level, 0.29 % on the medium level and 0.071 % on the fine level,
-  so on the fine level alone they would pass the 0.1 % tolerance. The test uses the coarse
-  level, and a full run solves the coarse and medium levels as well.
+- **The volume guard is tightest on the fine level.** Straight-chord midside nodes cut the
+  volume by 1.14 % on the coarse level, 0.29 % on the medium level and 0.071 % on the fine level.
+  The 0.01 % tolerance catches all three, with a margin of about 7× on the fine level; the
+  correct mesh is exact to 4·10⁻⁶ %. A defect that cuts the volume by less than 0.01 % would
+  still pass.
 - **The low observed order.** The observed order p = 0.60 says the sequence is not yet in its
   asymptotic range, so the Richardson estimate is not a reliable limit. It is information only
   and doesn't affect the verdict.

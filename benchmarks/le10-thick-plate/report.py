@@ -5,9 +5,14 @@ from collections.abc import Sequence
 from enum import Enum
 
 from benchmark_parameters import COARSE, FINE, MEDIUM, BenchmarkParameters
-from deck import C3D20, C3D20R
-from reference import quarter_annulus_volume, target_stress_at_d, top_face_area
-from runner import BenchmarkResult
+from deck import C3D20, VERDICT_ELEMENT_TYPE
+from reference import (
+    quarter_annulus_volume,
+    stress_at_d_error,
+    target_stress_at_d,
+    top_face_area,
+)
+from runner import REACTION_GUARD_TOLERANCE, VOLUME_GUARD_TOLERANCE, BenchmarkResult
 
 ADR = "[ADR 0004](../../docs/adr/0004-published-reference-value.md)"
 REFINEMENT_RATIO = 2
@@ -57,7 +62,7 @@ def observed_order(coarse: float, medium: float, fine: float) -> float | None:
 
 
 def richardson_estimate(coarse: float, medium: float, fine: float) -> float | None:
-    """The converged value extrapolated from three levels at refinement ratio 2 with the
+    """The Richardson estimate of σ_yy(D) from three levels at refinement ratio 2 with the
     observed order; None when the order is not available."""
     order = observed_order(coarse, medium, fine)
     if order is None:
@@ -69,7 +74,7 @@ def _coarse_medium_fine(
     results: Sequence[BenchmarkResult],
 ) -> tuple[BenchmarkResult, BenchmarkResult, BenchmarkResult] | None:
     """The C3D20R coarse, medium and fine records; None unless all three were run."""
-    by_level = {r.mesh_level: r for r in results if r.element_type == C3D20R}
+    by_level = {r.mesh_level: r for r in results if r.element_type == VERDICT_ELEMENT_TYPE}
     if not {COARSE, MEDIUM, FINE} <= by_level.keys():
         return None
     return by_level[COARSE], by_level[MEDIUM], by_level[FINE]
@@ -79,7 +84,7 @@ def render_report(
     results: Sequence[BenchmarkResult], params: BenchmarkParameters, ccx_version: str
 ) -> str:
     verdict_line = verdict_text(verdict(results))
-    reduced = [r for r in results if r.element_type == C3D20R]
+    reduced = [r for r in results if r.element_type == VERDICT_ELEMENT_TYPE]
     full = [r for r in results if r.element_type == C3D20]
     lines = [
         "# NAFEMS LE10 thick plate benchmark report",
@@ -97,7 +102,7 @@ def render_report(
         "## Verdict",
         "",
         f"**{verdict_line}**. The rule: PASS when the fine C3D20R level's σ_yy(D) is within "
-        f"±{TOLERANCE_PERCENT:g} % of the published {_minus(target_stress_at_d())} MPa, with the "
+        f"±{TOLERANCE_PERCENT:g} % of the published {signed(target_stress_at_d())} MPa, with the "
         "same sign, and σ_yy(D) is converging, |fine − medium| < |medium − coarse|. The error is "
         "signed against the signed target, so a flipped sign gives about −200 % and fails. The "
         "coarse and medium levels count only through the convergence condition; the Richardson "
@@ -106,6 +111,7 @@ def render_report(
         "",
         *_c3d20_section(reduced, full),
         *_stress_at_d_section(reduced),
+        *_sanity_guards_section(reduced, params),
         "## How the values are measured",
         "",
         "- **σ_yy(D)** is ccx's nodal σ_yy at point D, read from the `.frd`: ccx extrapolates "
@@ -152,10 +158,10 @@ def _target_section(params: BenchmarkParameters) -> list[str]:
         "",
         "| Quantity | Value |",
         "|---|---|",
-        f"| σ_yy(D), published (target) | {_minus(target_stress_at_d())} MPa |",
+        f"| σ_yy(D), published (target) | {signed(target_stress_at_d())} MPa |",
         "",
         f"Point D is (a_i, 0, +{half:g}) mm: on the hole edge, on the x axis, on the loaded "
-        "face. The value is the NAFEMS LE10 reference as published in four vendor "
+        "face. The value is the published reference value, from four vendor "
         "verification documents that agree on it: the Abaqus Benchmarks Manual, Altair "
         "OptiStruct, Seamplex/Fino case 012 and the COMSOL thick_plate model. The primary "
         "NAFEMS document, TNSB Rev. 3, was not consulted. It is compressive; some sources "
@@ -202,8 +208,8 @@ def _richardson_lines(results: Sequence[BenchmarkResult]) -> list[str]:
             "| Richardson estimate (information) | not available | – |",
         ]
     else:
-        error = (estimate - target_stress_at_d()) / target_stress_at_d() * 100
-        value = f"{estimate:.3f} MPa | {error:+.2f} %".replace("-", "−")
+        error = stress_at_d_error(estimate)
+        value = f"{signed(estimate, 3)} MPa | {signed(error, 2, plus=True)} %"
         lines += [
             f"| Observed order p (information) | {order:.2f} | – |",
             f"| Richardson estimate (information) | {value} |",
@@ -278,5 +284,41 @@ def _stress_at_d_section(results: Sequence[BenchmarkResult]) -> list[str]:
     return lines
 
 
-def _minus(value: float) -> str:
-    return f"{value:g}".replace("-", "−")
+def _sanity_guards_section(
+    results: Sequence[BenchmarkResult], params: BenchmarkParameters
+) -> list[str]:
+    volume = quarter_annulus_volume(params)
+    load = params.pressure * top_face_area(params)
+    volume_tolerance = VOLUME_GUARD_TOLERANCE * 100
+    reaction_tolerance = REACTION_GUARD_TOLERANCE * 100
+    lines = [
+        "## Sanity guards",
+        "",
+        "Every level passed both guards, or there would be no report. The mesh volume, "
+        f"integrated with the 20-node shape functions, must be within {volume_tolerance:g} % of "
+        f"the exact quarter-annulus volume, {volume:.0f} mm³. The total RF_z on line EE′ must be "
+        f"within {reaction_tolerance:g} % of the applied load p·A = {load:.1f} N. Differences "
+        "are (FE − exact) / exact × 100. The table shows the C3D20R levels.",
+        "",
+        "| Mesh level | Mesh volume (mm³) | Volume difference (%) | RF_z on EE′ (N) "
+        "| Reaction difference (%) |",
+        "|---|---:|---:|---:|---:|",
+    ]
+    for r in results:
+        volume_difference = (r.mesh_volume - volume) / volume * 100
+        reaction_difference = (r.reaction_z_on_ee - load) / load * 100
+        lines.append(
+            f"| {r.mesh_level.label} | {r.mesh_volume:.0f} "
+            f"| {signed(volume_difference, 6, plus=True)} | {r.reaction_z_on_ee:.1f} "
+            f"| {signed(reaction_difference, 6, plus=True)} |"
+        )
+    lines.append("")
+    return lines
+
+
+def signed(value: float, digits: int | None = None, plus: bool = False) -> str:
+    """The value with a Unicode minus, in :g format or with the given decimals, and a leading
+    + on positive values when plus is set."""
+    sign = "+" if plus else ""
+    text = f"{value:{sign}g}" if digits is None else f"{value:{sign}.{digits}f}"
+    return text.replace("-", "−")

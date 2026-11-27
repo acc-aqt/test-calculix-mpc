@@ -214,3 +214,16 @@ def test_report_does_not_call_a_second_order_richardson_estimate_unreliable():
     text = render_report(levels(1.05, 1.0125, 1.003125), LE10, "V")
     assert "| Observed order p (information) | 2.00 | – |" in text
     assert "not a reliable limit" not in text
+
+
+def test_report_shows_each_levels_sanity_guard_values_against_the_exact_ones():
+    # The record holds 3.269188e9 mm³ against the exact 3 269 219 855 mm³, −0.000974 %, and
+    # RF_z = 5.448647e6 N against p·A = 5 448 699.8 N, −0.000968 %.
+    text = render_report(levels(1.5, 1.2, 1.0), LE10, "Version 2.24")
+    assert "## Sanity guards" in text
+    assert "| coarse 6×4×2 | 3269188000 | −0.000974 | 5448647.0 | −0.000968 |" in text
+    assert "| fine 24×16×8 | 3269188000 | −0.000974 | 5448647.0 | −0.000968 |" in text
+    assert "3269219855 mm³" in text
+    assert "5448699.8 N" in text
+    assert "0.01 %" in text
+    assert "0.1 %" in text
