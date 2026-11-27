@@ -1,6 +1,6 @@
 import pytest
 
-from benchmark_parameters import COARSE, IPE200_CANTILEVER
+from benchmark_parameters import COARSE, IPE200_CANTILEVER, MEDIUM
 from deck import generate_deck
 from runner import CcxError, find_ccx, run_benchmark, run_ccx
 
@@ -15,6 +15,18 @@ pytestmark = pytest.mark.skipif(
 @pytest.fixture(scope="module")
 def coarse(tmp_path_factory):
     return run_benchmark(COARSE, IPE200_CANTILEVER, tmp_path_factory.mktemp("work"), CCX)
+
+
+@pytest.fixture(scope="module")
+def medium(tmp_path_factory):
+    return run_benchmark(MEDIUM, IPE200_CANTILEVER, tmp_path_factory.mktemp("work"), CCX)
+
+
+def test_medium_mesh_is_closer_to_timoshenko_than_coarse_and_within_five_percent(coarse, medium):
+    assert abs(medium.deflection_error) < abs(coarse.deflection_error)
+    assert medium.deflection_error == pytest.approx(0, abs=5)
+    assert medium.midspan_top_stress_error == pytest.approx(0, abs=5)
+    assert medium.midspan_bottom_stress_error == pytest.approx(0, abs=5)
 
 
 def test_coarse_reference_node_deflects_down_close_to_timoshenko(coarse):

@@ -57,3 +57,11 @@ class MeshLevel:
 COARSE = MeshLevel(
     "coarse", flange_thickness_divisions=1, web_height_divisions=4, length_divisions=30
 )
+MEDIUM = MeshLevel(
+    "medium", flange_thickness_divisions=2, web_height_divisions=8, length_divisions=60
+)
+FINE = MeshLevel(
+    "fine", flange_thickness_divisions=3, web_height_divisions=12, length_divisions=120
+)
+
+MESH_LEVELS = (COARSE, MEDIUM, FINE)
