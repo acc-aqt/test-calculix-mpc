@@ -139,7 +139,7 @@ The twist φ(L) at the tip face, the measured value checked against the Vlasov t
 _Avoid_: Tip rotation, end rotation, rotation angle
 
 **Twist**:
-The rotation φ(x) of a cross-section about the x axis, measured as φ = (u_z,top − u_z,bottom)/h_m from the flange mid-plane centre nodes at each x station; positive for the torque about +x.
+How far a cross-section turns about the x axis, φ(x) in rad, measured as φ = (u_z,top − u_z,bottom)/h_m from the flange mid-plane centre nodes at each x station; positive for the torque about +x.
 _Avoid_: Rotation, angle of twist
 
 **St-Venant torsion**:
@@ -167,7 +167,7 @@ _Avoid_: Sectorial moment of inertia, C_w, Γ
 _Avoid_: Torsion coefficient, decay constant
 
 **Sectorial coordinate**:
-The thin-walled warping function ω, equal to y·z on the flange mid-planes, with magnitude h_m·b/4 at the four flange tips.
+The thin-walled coordinate ω that gives the shape of the warping over the section, ω = y·z on the flange mid-planes, with magnitude h_m·b/4 at the four flange tips.
 _Avoid_: Warping function, unit warping
 
 **Warping stress**:
