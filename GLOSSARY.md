@@ -1,6 +1,6 @@
-# CalculiX Cantilever Benchmarks
+# CalculiX Benchmarks
 
-Reproducible checks of CalculiX, set up and inspected through the `calculix-mcp-rs` MCP server, against closed-form beam theory for solid cantilevers: an IPE 200 I-beam and a CHS 168.3 × 8 tube with a tip load, and the IPE 200 I-beam with a tip torque. Terms used by both benchmarks come first, then the terms of each benchmark.
+Reproducible checks of CalculiX, set up and inspected through the `calculix-mcp-rs` MCP server, against known answers: closed-form beam theory for solid cantilevers (an IPE 200 I-beam and a CHS 168.3 × 8 tube with a tip load, and the IPE 200 I-beam with a tip torque), and a published reference value for the NAFEMS LE10 thick plate, whose stress state is fully three-dimensional. Terms shared by the benchmarks come first, then the terms of each benchmark.
 
 ## Shared
 
@@ -193,3 +193,41 @@ _Avoid_: Coupling, MPC, distributing coupling (that is the `*DISTRIBUTING COUPLI
 **Zero-twist guard**:
 The check that stops a run whose |φ(L)| is below 1 % of the St-Venant tip twist with an error and no report, so a load introduction that drops the torque cannot pass quietly.
 _Avoid_: Sanity check, zero check
+
+## NAFEMS LE10 thick plate
+
+Mesh level, error and verdict carry over from above. There is no root face, tip face or reference node; the target is a published reference value instead of an analytical one.
+
+**Thick plate**:
+The NAFEMS LE10 model: a quarter of an elliptic annulus between the inner ellipse x²/2000² + y²/1000² = 1 and the outer ellipse x²/3250² + y²/2750² = 1 (mm), 600 mm thick with the mid-plane at z = 0, under 1 MPa pressure on its top face (z = +300 mm), modelled as a mapped mesh of C3D20R bricks with midside nodes on the ellipses.
+_Avoid_: Plate, slab, LE10 model
+
+**Point D**:
+The node at (2000, 0, 300) mm, on the hole edge, on the x axis, on the loaded top face, where σ_yy is checked against the published reference value. The plate's stress state is fully three-dimensional, but D's exact state is biaxial: it lies on the traction-free hole surface (normal −x) and the loaded top face, so σ_xx and every shear component vanish and σ_zz = −p.
+_Avoid_: Check point, stress point
+
+**Point A**:
+The other end of the hole edge, at (0, 1000, 300) mm on the y axis.
+
+**Hole edge**:
+The inner ellipse on the top face, from point D to point A, along which σ_yy and u_z are plotted.
+_Avoid_: Inner edge, hole boundary
+
+**Line EE′**:
+The outer elliptical face at mid-thickness (z = 0), every corner and midside node of it, on which u_z = 0 holds the plate up. The constraint is singular, so stresses near it depend on the mesh.
+_Avoid_: Support line, edge support, outer edge
+
+**LE10 mesh level**:
+Element counts around the annulus × across it × through the thickness, e.g. coarse 6×4×2. Each line across the annulus joins the inner and outer ellipses at one parametric angle θ, (a cos θ, b sin θ), with uniform spacing. The thickness count is even so that line EE′ has nodes.
+
+**Published reference value**:
+A target taken from published verification documents rather than derived in the repo: σ_yy(D) = −5.38 MPa, compressive, from four vendor documents that agree on it. The primary NAFEMS source was not consulted. See ADR 0004.
+_Avoid_: Reference solution, NAFEMS value, expected value
+
+**Richardson estimate**:
+The converged σ_yy(D) extrapolated from the coarse, medium and fine C3D20R levels at a constant refinement ratio of 2, reported beside the published reference value and flagged when more than 2 % from it.
+_Avoid_: Extrapolated value, converged value
+
+**Sanity guard**:
+A check on the solved model that stops a run with exit code 2 and no report when the deck is quietly wrong. The LE10 guards check the mesh volume against the exact quarter-annulus volume and the total reaction on line EE′ against the applied load. The zero-twist guard of the torsion benchmark is one too.
+_Avoid_: Sanity check, assertion, validation
