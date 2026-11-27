@@ -24,6 +24,7 @@ from benchmark_parameters import IPE200_CANTILEVER, MESH_LEVELS, BenchmarkParame
 from deck import generate_deck
 from figure_data import FigureSeries, MeshLevelResults, figure_series
 from frd import read_frd
+from palette import AXIS, BAND, BLUE, DARK_BLUE, GREEN, GRID, INK, LIGHT_BLUE, ORANGE, SECONDARY_INK
 from renders import deformed_figure, meshes_figure, model_figure, stress_figure
 from report import TOLERANCE_PERCENT
 from runner import benchmark_result, result_files
@@ -31,17 +32,12 @@ from runner import benchmark_result, result_files
 HERE = Path(__file__).resolve().parent
 LEVELS_BY_NAME = {level.name: level for level in MESH_LEVELS}
 
-INK = "#191919"
-SECONDARY_INK = "#666666"
-GRID = "#e7e7e7"
-AXIS = "#c2c2c2"
-BAND = "#efefef"
 LEVEL_STYLES = {
-    "coarse": {"color": "#84b9f3", "marker": "o"},
-    "medium": {"color": "#257de0", "marker": "s"},
-    "fine": {"color": "#0e3d7e", "marker": "^"},
+    "coarse": {"color": LIGHT_BLUE, "marker": "o"},
+    "medium": {"color": BLUE, "marker": "s"},
+    "fine": {"color": DARK_BLUE, "marker": "^"},
 }
-QUANTITY_COLORS = ("#257de0", "#f47230", "#00b894")
+QUANTITY_COLORS = (BLUE, ORANGE, GREEN)
 STYLE = {
     "figure.dpi": 150,
     "savefig.dpi": 150,

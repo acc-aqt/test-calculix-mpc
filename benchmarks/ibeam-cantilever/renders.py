@@ -23,19 +23,15 @@ from deck import (
 )
 from figure_data import MeshLevelResults
 from frd import FrdResults
+from palette import BLUE, EDGES, GREEN, ORANGE, OUTLINE, RED, SECONDARY_INK, STEEL, WALL
 from runner import von_mises
 
 TIP_DROP_FRACTION = 0.1
 RENDER_SIZE = (2400, 1600)
-STEEL = "#cfd5dc"
-EDGES = "#3b4452"
-WALL = "#7d8794"
-OUTLINE = "#9aa3ad"
-SECONDARY_INK = "#666666"
-LOAD = "#d1362f"
-COUPLING = "#f47230"
-WEB_TIP = "#257de0"
-MIDSPAN = "#00a383"
+LOAD = RED
+COUPLING = ORANGE
+WEB_TIP = BLUE
+MIDSPAN = GREEN
 STRESS_MAP = "RdBu_r"
 DISPLACEMENT_MAP = "viridis"
 VON_MISES_MAP = "magma_r"
