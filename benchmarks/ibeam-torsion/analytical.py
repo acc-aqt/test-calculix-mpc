@@ -57,16 +57,16 @@ def analytical_solution(params: BenchmarkParameters) -> AnalyticalSolution:
     s = params.section
     e = params.material.youngs_modulus
     p = _section_properties(params)
-    g, h_m, warping_constant = p.shear_modulus, p.flange_mid_plane_distance, p.warping_constant
+    h_m = p.flange_mid_plane_distance
     omega = h_m * s.flange_width / 4
     length = params.length
     end_corrected_j = _end_corrected_torsion_constant(params)
     return AnalyticalSolution(
-        shear_modulus=g,
+        shear_modulus=p.shear_modulus,
         torsion_constant=p.torsion_constant,
         flange_second_moment=p.flange_second_moment,
         flange_mid_plane_distance=h_m,
-        warping_constant=warping_constant,
+        warping_constant=p.warping_constant,
         torsion_parameter=p.torsion_parameter,
         torsion_parameter_times_length=p.torsion_parameter * length,
         flange_tip_sectorial_coordinate=omega,
@@ -80,12 +80,12 @@ def analytical_solution(params: BenchmarkParameters) -> AnalyticalSolution:
         ),
         root_warping_stress=float(e * omega * twist_curvature_at(params, 0.0)),
         midspan_st_venant_shear_stress=float(
-            g * s.flange_thickness * twist_rate_at(params, length / 2)
+            p.shear_modulus * s.flange_thickness * twist_rate_at(params, length / 2)
         ),
         end_corrected_torsion_constant=end_corrected_j,
-        end_corrected_tip_twist=_vlasov_tip_twist(params, g, end_corrected_j, warping_constant),
-        end_corrected_quarter_span_warping_stress=_vlasov_quarter_span_warping_stress(
-            params, g, end_corrected_j, warping_constant, omega
+        end_corrected_tip_twist=float(twist_at(params, length, torsion_constant=end_corrected_j)),
+        end_corrected_quarter_span_warping_stress=float(
+            e * omega * twist_curvature_at(params, length / 4, torsion_constant=end_corrected_j)
         ),
     )
 
@@ -150,26 +150,6 @@ def _end_corrected_torsion_constant(params: BenchmarkParameters) -> float:
     return (flanges + web) / 3
 
 
-def _vlasov_tip_twist(
-    params: BenchmarkParameters, g: float, j: float, warping_constant: float
-) -> float:
-    """φ(L) = T/(GJ)·(L − tanh(λL)/λ) for a given J."""
-    lam = np.sqrt(g * j / (params.material.youngs_modulus * warping_constant))
-    length = params.length
-    return float(params.torque / (g * j) * (length - np.tanh(lam * length) / lam))
-
-
-def _vlasov_quarter_span_warping_stress(
-    params: BenchmarkParameters, g: float, j: float, warping_constant: float, omega: float
-) -> float:
-    """E·ω·φ''(L/4) for a given J."""
-    e = params.material.youngs_modulus
-    lam = np.sqrt(g * j / (e * warping_constant))
-    length = params.length
-    curvature = params.torque / (g * j) * lam * np.sinh(0.75 * lam * length) / np.cosh(lam * length)
-    return float(e * omega * curvature)
-
-
 def _curve_constants(
     params: BenchmarkParameters, torsion_constant: float | None = None
 ) -> tuple[float, float, float]:
@@ -178,8 +158,15 @@ def _curve_constants(
     g, j, lam = p.shear_modulus, p.torsion_constant, p.torsion_parameter
     if torsion_constant is not None:
         j = torsion_constant
-        lam = float(np.sqrt(g * j / (params.material.youngs_modulus * p.warping_constant)))
+        lam = _torsion_parameter(params, g, j, p.warping_constant)
     return params.torque / (g * j), lam, params.length
+
+
+def _torsion_parameter(
+    params: BenchmarkParameters, g: float, j: float, warping_constant: float
+) -> float:
+    """λ = √(GJ / (E·I_w))."""
+    return float(np.sqrt(g * j / (params.material.youngs_modulus * warping_constant)))
 
 
 @dataclass(frozen=True)
@@ -207,5 +194,5 @@ def _section_properties(params: BenchmarkParameters) -> _SectionProperties:
         flange_second_moment=flange_second_moment,
         flange_mid_plane_distance=h_m,
         warping_constant=warping_constant,
-        torsion_parameter=float(np.sqrt(g * j / (e * warping_constant))),
+        torsion_parameter=_torsion_parameter(params, g, j, warping_constant),
     )
