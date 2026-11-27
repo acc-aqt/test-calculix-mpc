@@ -149,3 +149,13 @@ def test_straight_chord_midside_nodes_on_the_curved_edges_trip_the_mesh_volume_g
     frd = run_ccx(variant.text, tmp_path / "chord", CCX)
     with pytest.raises(GuardError, match="mesh-volume guard"):
         benchmark_result(COARSE, C3D20R, LE10, variant, read_frd(frd), frd.with_suffix(".dat"))
+
+
+@needs_ccx
+def test_straight_chord_midside_nodes_trip_the_mesh_volume_guard_on_the_fine_level_too(tmp_path):
+    # The fine level is where straight chords cut the least volume: about 0.071 %.
+    deck = generate_deck(LE10, FINE)
+    variant = straight_chord_variant(deck)
+    frd = run_ccx(variant.text, tmp_path / "chord", CCX)
+    with pytest.raises(GuardError, match="mesh-volume guard"):
+        benchmark_result(FINE, C3D20R, LE10, variant, read_frd(frd), frd.with_suffix(".dat"))
