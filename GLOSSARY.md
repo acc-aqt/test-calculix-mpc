@@ -174,6 +174,10 @@ _Avoid_: Warping function, unit warping
 The normal stress σ_w = −E·y·z·φ''(x) from restrained warping, linear across each flange width and opposite in sign on the two edges of a flange and on the two flanges. Its flange-tip magnitude E·ω·φ'' at x = L/4 is the warping stress target.
 _Avoid_: Bimoment stress, warping normal stress, σ_xx
 
+**Bimoment**:
+The stress resultant of the warping stress, B(x) = −E·I_w·φ''(x), signed so that σ_w = B·ω/I_w with ω = y·z, consistent with σ_w = −E·y·z·φ''(x). For the torque about +x, φ'' > 0, so B is negative; its magnitude is largest at the root and falls to zero at the tip face, which is free to warp.
+_Avoid_: Warping moment, flange moment
+
 **Flange-tip edges**:
 The four edges along x at the outer ends of the flange widths (y = ±h/2 … ±(h/2 − t_f), z = ±b/2), where warping stress is largest.
 _Avoid_: Flange corners, flange edges
