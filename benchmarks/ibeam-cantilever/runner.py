@@ -110,11 +110,25 @@ def run_ccx(deck_text: str, job_dir: Path, ccx: Path) -> Path:
 def run_benchmark(
     level: MeshLevel, params: BenchmarkParameters, work_dir: Path, ccx: Path
 ) -> BenchmarkResult:
+    run_ccx(generate_deck(params, level).text, work_dir / level.name, ccx)
+    return read_benchmark_result(level, params, work_dir)
+
+
+def result_files(level: MeshLevel, work_dir: Path) -> tuple[Path, Path]:
+    """The .frd and .dat a solved mesh level leaves in work_dir."""
+    job = work_dir / level.name / JOB_NAME
+    return job.with_suffix(".frd"), job.with_suffix(".dat")
+
+
+def read_benchmark_result(
+    level: MeshLevel, params: BenchmarkParameters, work_dir: Path
+) -> BenchmarkResult:
+    """The result record of a mesh level that ccx has already solved in work_dir."""
     deck = generate_deck(params, level)
-    frd = run_ccx(deck.text, work_dir / level.name, ccx)
+    frd, dat = result_files(level, work_dir)
     results = read_nodal_results(frd)
     displacements, stresses = results["DISP"], results["STRESS"]
-    printed = read_printed_displacements(frd.with_suffix(".dat"))[REFERENCE_NODE]
+    printed = read_printed_displacements(dat)[REFERENCE_NODE]
     (reference,) = deck.node_sets[REFERENCE_NODE]
     (web_tip,) = deck.node_sets[WEB_CENTRELINE_TIP_NODE]
     return BenchmarkResult(
