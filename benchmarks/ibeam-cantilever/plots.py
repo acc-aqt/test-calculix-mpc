@@ -285,8 +285,9 @@ def flange_stress_figure(
         f"{h:g} mm, shaded) from either end the {fine.mesh_level.name} level differs from "
         f"beam theory by at most {np.abs(gap[middle]).max():.2f} MPa. The shaded St-Venant "
         "zones are where the end conditions disturb the beam-theory stress. At the root the "
-        "fixed face stops the lateral (Poisson) contraction and the stress is singular where "
-        "it meets the free surfaces, so the flange stress at x = 0 rises with refinement ("
+        "fixed root face stops the lateral (Poisson) contraction and the stress is singular "
+        "where it meets the free surfaces, so the flange stress at x = 0 rises from coarse to "
+        "fine ("
         + " → ".join(f"{level.series.top_flange_sxx[0]:.0f}" for level in levels)
         + f" MPa against P·L·c/I = {moment_diagram(0.0):.1f} MPa) and undershoots just "
         "behind it. At the tip the distributing coupling brings the load in over the tip "
@@ -381,19 +382,20 @@ def convergence_figure(
         ax.set_xscale("log")
         ax.set_xticks(nodes, [f"{name}\n{n:,}" for name, n in zip(names, nodes, strict=True)])
         ax.minorticks_off()
-        ax.set_xlabel("nodes (log scale)")
+        ax.set_xlabel("nodes, including the reference node (log scale)")
         ax.margins(x=0.15)
     fig.savefig(path)
 
     span = max(max(abs(e) for e in errors) for _, _, errors in quantities)
     roots = " → ".join(f"{p.root_peak_von_mises:.0f}" for p in points)
     return (
-        "Convergence against node count (log scale), one point per mesh level. Left: the "
+        "Convergence against node count (log scale), one point per mesh level. As in "
+        "REPORT.md and figure 2, the node counts include the reference node. Left: the "
         "signed errors of the three pass/fail quantities against their targets, inside the "
         f"shaded ±{TOLERANCE_PERCENT:g} % pass band. Middle: the same errors close up. Every "
-        f"level is within {span:.3f} % of its target, so the results are stable under "
-        "refinement; the top- and bottom-flange stress errors are equal and their markers "
-        "overlap. Right: the root peak von Mises stress grows with every refinement "
+        f"level is within {span:.3f} % of its target, so the results are stable from coarse "
+        "to fine; the top- and bottom-flange stress errors are equal and their markers "
+        "overlap. Right: the root peak von Mises stress grows from each mesh level to the next "
         f"({roots} MPa) and moves away from the beam-theory root bending stress "
         f"P·L·c/I = {root_bending:.1f} MPa. That is the expected stress singularity "
         "where the fixed root face meets the free surfaces, which is why the root stress is "
