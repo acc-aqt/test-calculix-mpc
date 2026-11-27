@@ -26,5 +26,11 @@ The IPE 200 torsion benchmark (#23) applies a torque at the tip of the solid I-b
 
 - The benchmark depends on `*COUPLING`/`*DISTRIBUTING` behaving as the ccx 2.24 manual describes; the zero-twist guard catches a version where it does not.
 - The FE beam twists more than the thin-walled target: on the coarse mesh φ is about 2.4 % above Vlasov at L/2, 4.2 % at 0.9L and 5 % at the tip, growing smoothly from root to tip. The cause is the torsion constant, not the coupling. Σbt³/3 without the end correction overestimates J, so the solid is softer in St-Venant torsion, and St-Venant torsion carries more of the torque towards the tip. With the end-corrected J the Vlasov tip twist is 0.27313 rad, and the coarse φ(L) is about 1 % above it. A least-squares rigid-rotation fit over all section nodes gives the same twist as the flange mid-plane centre nodes to within 0.3 %, so the section does not distort measurably. The tip-twist tolerance is therefore ±8 %, wider than the ±5 % for the warping stress.
-- Near the tip there is a short load-introduction zone where the coupling's force distribution differs from the St-Venant shear flow. It is a minor, local effect.
+- The coupling's force distribution differs from the St-Venant shear flow, and the load-introduction zone it causes is not short. The three-level run with figures (#26) measured it:
+  - the flange-tip warping stress stays above Vlasov from about x ≈ 1200 mm to the tip, with the fine level more than 2 % above the end-corrected curve;
+  - it levels off at about 12–17 MPa between x = 2000 and 2800 mm, where Vlasov falls to a few MPa, and drops to near zero only at the tip face;
+  - all three mesh levels agree, so it is not a discretisation error;
+  - x = L/4 is clear of it: there the fine level is −0.47 % from the end-corrected curve, so the stress verdict is not affected.
+
+  The φ(x) gap also grows past the end-corrected line over the last third of the length, so the disturbance may add to the tip-twist gap there, on top of the J approximation above. The likely cause, not proven, is that the coupling brings most of the torque into the flanges as lateral shear, where Vlasov carries it almost entirely as St-Venant shear at a free tip; in an open section that difference settles over about 1/λ ≈ 810 mm rather than locally. Follow-up: #29.
 - The reference node's `*NODE PRINT` is kept in the deck only to show, in a test, that it stays zero.
