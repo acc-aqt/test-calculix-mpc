@@ -47,7 +47,8 @@ micromamba run -p "$HOME/micromamba/envs/calculix-bench" ruff check
 
 Configuration for both is in `pyproject.toml`. The end-to-end tests run the real `ccx` (coarse
 and medium mesh levels, a few seconds) and are skipped with a message when `ccx` isn't found.
-The `plots.py` smoke test is also skipped without matplotlib or PyVista.
+The `plots.py` smoke test and the `renders.py` tests are also skipped without matplotlib or
+PyVista.
 
 ## Running the benchmark
 
@@ -102,8 +103,9 @@ micromamba run -p "$HOME/micromamba/envs/calculix-bench" python benchmark.py
 micromamba run -p "$HOME/micromamba/envs/calculix-bench" python plots.py
 ```
 
-`plots.py` reads the `.frd` and `.dat` of every mesh level (a few seconds) and doesn't run `ccx`.
-Options:
+`plots.py` reads the `.frd` and `.dat` of every mesh level and doesn't run `ccx` (about ten
+seconds). Figures 1-4 are 3D views that `renders.py` draws off-screen with PyVista; figures 5-8
+are matplotlib charts. Options:
 
 - `--work-dir <dir>` reads the solver output from another folder, as for `benchmark.py`.
 - `--levels coarse medium` plots only the levels you name. The committed figures use all three.

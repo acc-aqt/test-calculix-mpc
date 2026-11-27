@@ -23,6 +23,7 @@ from analytical import (
 from benchmark_parameters import IPE200_CANTILEVER, MESH_LEVELS, BenchmarkParameters
 from figure_data import FigureSeries, figure_series
 from frd import FrdResults, read_frd
+from renders import deformed_figure, meshes_figure, model_figure, stress_figure
 from report import TOLERANCE_PERCENT
 from runner import BenchmarkResult, read_benchmark_result, result_files
 
@@ -412,13 +413,17 @@ def convergence_figure(
 
 
 FIGURES = (
+    (1, "model", "Model and boundary conditions", model_figure),
+    (2, "meshes", "Mesh levels", meshes_figure),
+    (3, "deformed-shape", "Deformed shape", deformed_figure),
+    (4, "stress", "σ_xx and von Mises stress", stress_figure),
     (5, "deflection", "Deflection along the beam", deflection_figure),
     (6, "stress-through-depth", "σ_xx through the depth at midspan", depth_stress_figure),
     (7, "stress-along-flange", "σ_xx along the top flange", flange_stress_figure),
     (8, "convergence", "Convergence against mesh size", convergence_figure),
 )
 """(number, file slug, title, draw). draw(levels, params, path) writes the PNG and returns the
-caption. Figures 1-4 are reserved for the 3D views."""
+caption."""
 
 
 def _figure(nrows: int, ncols: int, figsize: tuple[float, float], **gridspec):

@@ -26,7 +26,7 @@ def test_coarse_work_dir_gives_the_figures_and_the_figures_page(tmp_path):
 
     assert code == 0
     pngs = sorted(p.name for p in (output_dir / "figures").glob("*.png"))
-    assert [name[:5] for name in pngs] == ["fig5-", "fig6-", "fig7-", "fig8-"]
+    assert [name.split("-")[0] for name in pngs] == [f"fig{n}" for n in range(1, 9)]
     page = (output_dir / "FIGURES.md").read_text()
     assert "Do not edit by hand" in page
     for name in pngs:
