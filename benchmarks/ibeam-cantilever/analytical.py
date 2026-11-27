@@ -61,6 +61,13 @@ def euler_bernoulli_deflection_at(params: BenchmarkParameters, x: Position) -> P
     return params.tip_load * x**2 * (3 * params.length - x) / (6 * bending_stiffness)
 
 
+def bending_stress_at(params: BenchmarkParameters, x: Position, y: Position) -> Position:
+    """Beam-theory σ_xx = M(x)·y / I with M(x) = P (L − x): the −y tip load hogs the cantilever,
+    so fibres above the neutral axis (+y) are in tension."""
+    s = analytical_solution(params)
+    return params.tip_load * (params.length - x) * y / s.second_moment_of_area
+
+
 def timoshenko_deflection_at(params: BenchmarkParameters, x: Position) -> Position:
     """Euler-Bernoulli deflection at x plus the shear term P x / (κ G A_s)."""
     s = analytical_solution(params)
