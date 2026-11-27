@@ -41,7 +41,6 @@ class BenchmarkResult:
     """Signed nodal sigma_xx on the top flange outer surface at x = L/2, averaged across the
     full flange width (the spec's Further Notes option, not only the web-centreline node)."""
     midspan_bottom_sxx_width_mean: float
-    """As midspan_top_sxx_width_mean, on the bottom flange outer surface."""
     root_peak_von_mises: float
     """Largest nodal von Mises stress on the root face. Information only: the fixed end disturbs
     it (St-Venant), so it never affects the verdict."""
@@ -49,13 +48,11 @@ class BenchmarkResult:
 
     @property
     def deflection_error(self) -> float:
-        """% error of the reference-node tip deflection against the Timoshenko deflection."""
         target = self.analytical.timoshenko_deflection
         return _percent_error(abs(self.reference_node_uy), target)
 
     @property
     def euler_bernoulli_deflection_error(self) -> float:
-        """% error of the reference-node tip deflection against the Euler-Bernoulli deflection."""
         target = self.analytical.euler_bernoulli_deflection
         return _percent_error(abs(self.reference_node_uy), target)
 
