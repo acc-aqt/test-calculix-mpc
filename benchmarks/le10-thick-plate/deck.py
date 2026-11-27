@@ -21,10 +21,12 @@ import numpy as np
 from benchmark_parameters import BenchmarkParameters, MeshLevel
 
 C3D20R = "C3D20R"
-"""20-node brick, reduced integration: the element type the verdict is decided on."""
+"""20-node brick, reduced integration."""
 C3D20 = "C3D20"
 """20-node brick, full integration: solved for information only."""
 ELEMENT_TYPES = (C3D20R, C3D20)
+VERDICT_ELEMENT_TYPE = C3D20R
+"""The element type whose fine level decides the LE10 verdict."""
 
 Y0_FACE = "YSYMM"
 X0_FACE = "XSYMM"

@@ -5,7 +5,7 @@ from collections.abc import Sequence
 from enum import Enum
 
 from benchmark_parameters import COARSE, FINE, MEDIUM, BenchmarkParameters
-from deck import C3D20, C3D20R
+from deck import C3D20, VERDICT_ELEMENT_TYPE
 from reference import (
     quarter_annulus_volume,
     stress_at_d_error,
@@ -74,7 +74,7 @@ def _coarse_medium_fine(
     results: Sequence[BenchmarkResult],
 ) -> tuple[BenchmarkResult, BenchmarkResult, BenchmarkResult] | None:
     """The C3D20R coarse, medium and fine records; None unless all three were run."""
-    by_level = {r.mesh_level: r for r in results if r.element_type == C3D20R}
+    by_level = {r.mesh_level: r for r in results if r.element_type == VERDICT_ELEMENT_TYPE}
     if not {COARSE, MEDIUM, FINE} <= by_level.keys():
         return None
     return by_level[COARSE], by_level[MEDIUM], by_level[FINE]
@@ -84,7 +84,7 @@ def render_report(
     results: Sequence[BenchmarkResult], params: BenchmarkParameters, ccx_version: str
 ) -> str:
     verdict_line = verdict_text(verdict(results))
-    reduced = [r for r in results if r.element_type == C3D20R]
+    reduced = [r for r in results if r.element_type == VERDICT_ELEMENT_TYPE]
     full = [r for r in results if r.element_type == C3D20]
     lines = [
         "# NAFEMS LE10 thick plate benchmark report",

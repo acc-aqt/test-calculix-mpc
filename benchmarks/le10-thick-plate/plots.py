@@ -14,7 +14,7 @@ import numpy as np
 from matplotlib.figure import Figure
 
 from benchmark_parameters import LE10, MESH_LEVELS, BenchmarkParameters
-from deck import C3D20, C3D20R, generate_deck
+from deck import C3D20, C3D20R, ELEMENT_TYPES, generate_deck
 from figure_data import FigureSeries, MeshLevelResults, figure_series
 from frd import read_frd
 from palette import AXIS, BAND, BLUE, DARK_BLUE, GRID, INK, LIGHT_BLUE, ORANGE, SECONDARY_INK
@@ -69,7 +69,7 @@ def main(argv: list[str] | None = None) -> int:
     files = [
         result_files(level, args.work_dir, element_type)
         for level in levels
-        for element_type in (C3D20R, C3D20)
+        for element_type in ELEMENT_TYPES
     ]
     missing = [path for paths in files for path in paths if not path.is_file()]
     if missing:

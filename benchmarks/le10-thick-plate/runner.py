@@ -38,7 +38,7 @@ class GuardError(CcxError):
 class BenchmarkResult:
     mesh_level: MeshLevel
     element_type: str
-    """C3D20R decides the verdict; C3D20 is information only."""
+    """One of deck.ELEMENT_TYPES; only VERDICT_ELEMENT_TYPE counts towards the verdict."""
     element_count: int
     node_count: int
     stress_at_d: tuple[float, float, float, float, float, float]
