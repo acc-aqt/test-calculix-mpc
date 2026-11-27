@@ -203,7 +203,7 @@ The NAFEMS LE10 model: a quarter of an elliptic annulus between the inner ellips
 _Avoid_: Plate, slab, LE10 model
 
 **Point D**:
-The node at (2000, 0, 300) mm, on the hole edge, on the x axis, on the loaded top face, where σ_yy is checked against the published reference value.
+The node at (2000, 0, 300) mm, on the hole edge, on the x axis, on the loaded top face, where σ_yy is checked against the published reference value. The plate's stress state is fully three-dimensional, but D's exact state is biaxial: it lies on the traction-free hole surface (normal −x) and the loaded top face, so σ_xx and every shear component vanish and σ_zz = −p.
 _Avoid_: Check point, stress point
 
 **Point A**:

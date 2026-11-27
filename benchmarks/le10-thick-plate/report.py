@@ -109,9 +109,11 @@ def _stress_at_d_section(results: Sequence[BenchmarkResult]) -> list[str]:
     lines = [
         "## Stress at D",
         "",
-        "Nodal stress tensor and von Mises stress at D, in MPa. D lies on the y = 0 symmetry "
-        "plane and on the top face, so in the exact solution the shear components vanish, "
-        "σ_zz equals −p and the three normal stresses are the principal stresses.",
+        "Nodal stress tensor and von Mises stress at D, in MPa. The plate's stress state is "
+        "fully three-dimensional, but D's exact state is biaxial: D lies on the traction-free "
+        "hole surface (normal −x) and on the loaded top face, so σ_xx = τ_xy = τ_yz = τ_zx = 0 "
+        "and σ_zz = −p there. How far the FE values are from that is a check on the surface "
+        "tractions.",
         "",
         "| Mesh level | σ_xx | σ_yy | σ_zz | τ_xy | τ_yz | τ_zx | von Mises |",
         "|---|---:|---:|---:|---:|---:|---:|---:|",

@@ -6,7 +6,7 @@ status: accepted
 
 ## Context
 
-The first three benchmarks (ADR 0001, ADR 0002, ADR 0003) check CalculiX against closed-form beam theory on slender cantilevers. Their stress states are essentially uniaxial bending stress plus shear, which says little about how C3D20R bricks handle a genuinely three-dimensional stress state. Problems with such a state rarely have a closed-form answer. The NAFEMS LE10 thick plate (#30) does not: a quarter of an elliptic annulus, 600 mm thick, under 1 MPa on its top face, whose target is σ_yy at point D on the hole edge. The value comes from a converged reference FE solution, not from a formula.
+The first three benchmarks (ADR 0001, ADR 0002, ADR 0003) check CalculiX against closed-form beam theory on slender cantilevers. Their stress states are essentially uniaxial bending stress plus shear, which says little about how C3D20R bricks handle a genuinely three-dimensional stress state. Problems with such a state rarely have a closed-form answer. The NAFEMS LE10 thick plate (#30) has none: a quarter of an elliptic annulus, 600 mm thick, under 1 MPa on its top face, whose target is σ_yy at point D on the hole edge. The value comes from a converged reference FE solution, not from a formula. The plate's stress state is fully three-dimensional, but at D itself the exact state is biaxial: D lies on the traction-free hole surface (normal −x) and the loaded top face, so σ_xx and every shear component vanish there and σ_zz = −p.
 
 ## Decision
 

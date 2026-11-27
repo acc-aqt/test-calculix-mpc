@@ -1,7 +1,6 @@
-import numpy as np
 import pytest
 
-from benchmark_parameters import COARSE, LE10
+from benchmark_parameters import COARSE, FINE, LE10, MEDIUM
 from deck import generate_deck
 from runner import CcxError, find_ccx, run_benchmark, run_ccx
 
@@ -26,17 +25,34 @@ def test_coarse_sigma_yy_at_d_is_compressive_and_of_the_published_order(coarse):
     assert coarse.stress_yy_at_d_error == pytest.approx(0.82, abs=0.01)
 
 
+@pytest.fixture(scope="module")
+def levels(coarse, tmp_path_factory):
+    work = tmp_path_factory.mktemp("work")
+    return [coarse, *(run_benchmark(level, LE10, work, CCX) for level in (MEDIUM, FINE))]
+
+
+def surface_traction_components(result):
+    """|σ_xx|, |τ_xy|, |τ_yz| and |τ_zx| at D, which vanish in the exact solution."""
+    sxx, _, _, sxy, syz, szx = result.stress_at_d
+    return tuple(abs(s) for s in (sxx, sxy, syz, szx))
+
+
 @needs_ccx
-def test_coarse_state_at_d_is_triaxial(coarse):
-    # D lies on the y = 0 symmetry plane and on the top face, so the shear components vanish
-    # there and the normal components are the principal stresses. All three are compressive,
-    # and the smallest (sigma_xx, prototype -0.36 MPa) is not negligible against sigma_yy.
-    sxx, syy, szz, *_ = coarse.stress_at_d
-    principal = np.linalg.eigvalsh(tensor(coarse.stress_at_d))
-    assert all(principal < 0)
-    assert min(abs(principal)) > 0.05 * max(abs(principal))
-    assert szz == pytest.approx(-LE10.pressure, rel=0.15)
-    assert syy == pytest.approx(min(principal), rel=0.01)
+def test_sigma_zz_at_d_carries_the_pressure_on_every_level(levels):
+    # Prototype: -1.085, -1.053, -1.001 MPa against -p = -1 MPa on the loaded top face.
+    for result in levels:
+        assert result.stress_at_d[2] == pytest.approx(-LE10.pressure, abs=0.1)
+
+
+@needs_ccx
+def test_traction_free_hole_surface_components_at_d_are_small_and_shrink_with_mesh_level(levels):
+    # D is on the traction-free hole surface (normal -x) and the loaded top face, so its exact
+    # state is biaxial: sigma_xx and every shear vanish. Prototype largest of them: 0.357,
+    # 0.179, 0.059 MPa (sigma_xx) against |sigma_yy| of about 5.4 MPa.
+    largest = [max(surface_traction_components(r)) for r in levels]
+    for result, value in zip(levels, largest, strict=True):
+        assert value < 0.1 * abs(result.stress_yy_at_d)
+    assert largest[0] > largest[1] > largest[2]
 
 
 @needs_ccx
@@ -62,9 +78,3 @@ def test_broken_deck_raises_instead_of_returning_results(tmp_path):
     assert broken != deck
     with pytest.raises(CcxError, match=r"(?s)ccx failed .*ERROR"):
         run_ccx(broken, tmp_path / "broken", CCX)
-
-
-def tensor(stress):
-    """The 3 x 3 tensor of a .frd STRESS record (sxx, syy, szz, sxy, syz, szx)."""
-    sxx, syy, szz, sxy, syz, szx = stress
-    return np.array([[sxx, sxy, szx], [sxy, syy, syz], [szx, syz, szz]])
