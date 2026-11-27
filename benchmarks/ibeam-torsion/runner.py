@@ -11,31 +11,32 @@ from pathlib import Path
 
 import numpy as np
 
-from analytical import AnalyticalSolution, analytical_solution
+from analytical import AnalyticalSolution, analytical_solution, warping_stress_at
 from benchmark_parameters import BenchmarkParameters, MeshLevel
 from deck import (
-    BOTTOM_FLANGE_CENTRE_LINE,
+    BOTTOM_FLANGE_MID_PLANE_CENTRE_NODES,
     FLANGE_TIP_EDGES,
     MIDSPAN_FLANGE_SURFACES,
     ROOT_FACE,
-    TOP_FLANGE_CENTRE_LINE,
+    TOP_FLANGE_MID_PLANE_CENTRE_NODES,
+    TOP_FLANGE_TIP_LINE,
     Deck,
     generate_deck,
 )
-from frd import FrdResults, NodalValues, read_frd
+from frd import SXX, SZX, FrdResults, NodalValues, read_frd
 
 JOB_NAME = "ibeam"
 ZERO_TWIST_FRACTION = 0.01
 """A tip twist below this fraction of the St-Venant tip twist means the torque never arrived."""
-_SXX, _SZX = 0, 5
-"""Positions in a .frd STRESS record (sxx, syy, szz, sxy, syz, szx)."""
+_UZ = 2
+"""Position of u_z in a .frd DISP record."""
 
 
 class CcxError(RuntimeError):
     """ccx did not finish the job, so there are no results to trust."""
 
 
-class ZeroTwistError(CcxError):
+class ZeroTwistError(RuntimeError):
     """ccx finished, but the beam did not twist: the torque was lost on the way in."""
 
 
@@ -50,6 +51,9 @@ class BenchmarkResult:
     flange_tip_warping_stresses: tuple[float, float, float, float]
     """Signed mean nodal σ_xx over each flange-tip edge at x = L/4, through the flange thickness:
     top flange at z = −b/2 and +b/2, then bottom flange at z = −b/2 and +b/2."""
+    flange_tip_stress_curve: tuple[tuple[float, float], ...]
+    """(x, σ_xx) along the top flange-tip edge at z = −b/2, the mean nodal σ_xx through the
+    flange thickness at each x station, root to tip."""
     midspan_st_venant_shear_stress: float
     """Mean nodal τ_xz on the top flange outer surface minus that on the bottom one, halved, at
     the outstand centres at x = L/2. Information only: warping shear is mixed in."""
@@ -89,6 +93,49 @@ class BenchmarkResult:
         return _percent_error(
             self.midspan_st_venant_shear_stress, self.analytical.midspan_st_venant_shear_stress
         )
+
+
+@dataclass(frozen=True)
+class TipZone:
+    """How the tip load-introduction zone shows on the top flange-tip σ_xx of one mesh level."""
+
+    onset_x: float
+    """The first x station past L/4 where σ_xx is more than ONSET_MARGIN above the Vlasov
+    curve with the end-corrected J, or L when there is none before the tip."""
+    plateau_min: float
+    plateau_max: float
+    """The range of σ_xx over PLATEAU_RANGE, where Vlasov has fallen to a few MPa."""
+    quarter_span_vs_end_corrected: float
+    """Signed % difference of σ_xx at x = L/4 from the end-corrected Vlasov curve."""
+
+
+PLATEAU_RANGE = (2000.0, 2800.0)
+"""The x range (mm) over which the flange-tip σ_xx levels off in the tip zone."""
+ONSET_MARGIN = 0.02
+
+
+def tip_zone(result: BenchmarkResult, params: BenchmarkParameters) -> TipZone:
+    """The tip-zone numbers of the report and of figure 3, from the flange-tip σ_xx curve."""
+    x, sxx = (np.array(column) for column in zip(*result.flange_tip_stress_curve, strict=True))
+    length = params.length
+    a = result.analytical
+    corrected = warping_stress_at(
+        params,
+        x,
+        a.flange_mid_plane_distance / 2,
+        -params.section.flange_width / 2,
+        a.end_corrected_torsion_constant,
+    )
+    beyond_quarter = (x > length / 4) & (x < length)
+    above = beyond_quarter & (sxx > (1 + ONSET_MARGIN) * corrected)
+    plateau = sxx[(x >= PLATEAU_RANGE[0]) & (x <= PLATEAU_RANGE[1])]
+    quarter = np.isclose(x, length / 4)
+    return TipZone(
+        onset_x=float(x[above].min()) if above.any() else float(length),
+        plateau_min=float(plateau.min()),
+        plateau_max=float(plateau.max()),
+        quarter_span_vs_end_corrected=float((sxx[quarter][0] / corrected[quarter][0] - 1) * 100),
+    )
 
 
 def find_ccx() -> Path | None:
@@ -170,11 +217,14 @@ def benchmark_result(
         node_count=deck.node_count,
         twist_curve=_twist_curve(frd, deck, analytical.flange_mid_plane_distance),
         flange_tip_warping_stresses=tuple(
-            _mean_component(stresses, deck.node_sets[name], _SXX) for name in FLANGE_TIP_EDGES
+            _mean_component(stresses, deck.node_sets[name], SXX) for name in FLANGE_TIP_EDGES
+        ),
+        flange_tip_stress_curve=tuple(
+            sorted(_mean_by_x(frd, deck.node_sets[TOP_FLANGE_TIP_LINE], "STRESS", SXX).items())
         ),
         midspan_st_venant_shear_stress=(
-            _mean_component(stresses, top_surface, _SZX)
-            - _mean_component(stresses, bottom_surface, _SZX)
+            _mean_component(stresses, top_surface, SZX)
+            - _mean_component(stresses, bottom_surface, SZX)
         )
         / 2,
         root_peak_von_mises=float(max(von_mises(stresses[n]) for n in deck.node_sets[ROOT_FACE])),
@@ -193,18 +243,21 @@ def benchmark_result(
 def _twist_curve(
     frd: FrdResults, deck: Deck, mid_plane_distance: float
 ) -> tuple[tuple[float, float], ...]:
-    top = _mean_uz_by_x(frd, deck.node_sets[TOP_FLANGE_CENTRE_LINE])
-    bottom = _mean_uz_by_x(frd, deck.node_sets[BOTTOM_FLANGE_CENTRE_LINE])
+    top = _mean_by_x(frd, deck.node_sets[TOP_FLANGE_MID_PLANE_CENTRE_NODES], "DISP", _UZ)
+    bottom = _mean_by_x(frd, deck.node_sets[BOTTOM_FLANGE_MID_PLANE_CENTRE_NODES], "DISP", _UZ)
     stations = sorted(top.keys() & bottom.keys())
     return tuple((x, (top[x] - bottom[x]) / mid_plane_distance) for x in stations)
 
 
-def _mean_uz_by_x(frd: FrdResults, nodes: tuple[int, ...]) -> dict[float, float]:
-    displacements = frd.nodal_results["DISP"]
+def _mean_by_x(
+    frd: FrdResults, nodes: tuple[int, ...], block: str, component: int
+) -> dict[float, float]:
+    """The mean of one component of a .frd result block over the nodes at each x station."""
+    values = frd.nodal_results[block]
     by_x: dict[float, list[float]] = defaultdict(list)
     for n in nodes:
-        by_x[frd.nodes[n][0]].append(displacements[n][2])
-    return {x: sum(uz) / len(uz) for x, uz in by_x.items()}
+        by_x[frd.nodes[n][0]].append(values[n][component])
+    return {x: sum(v) / len(v) for x, v in by_x.items()}
 
 
 def _mean_component(stresses: NodalValues, nodes: tuple[int, ...], component: int) -> float:

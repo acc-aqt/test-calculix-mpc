@@ -11,7 +11,7 @@ from pathlib import Path
 
 from benchmark_parameters import IPE200_TORSION, MESH_LEVELS
 from report import Verdict, render_report, verdict, verdict_text
-from runner import CcxError, ccx_version, find_ccx, run_benchmark
+from runner import CcxError, ZeroTwistError, ccx_version, find_ccx, run_benchmark
 
 HERE = Path(__file__).resolve().parent
 LEVELS_BY_NAME = {level.name: level for level in MESH_LEVELS}
@@ -32,7 +32,7 @@ def main(argv: list[str] | None = None) -> int:
         for name in args.levels:
             print(f"Running mesh level {name} ...", flush=True)
             results.append(run_benchmark(LEVELS_BY_NAME[name], IPE200_TORSION, args.work_dir, ccx))
-    except CcxError as error:
+    except (CcxError, ZeroTwistError) as error:
         print(f"{error}\nStopped; no report written.", file=sys.stderr)
         return 2
 

@@ -1,5 +1,6 @@
 import pytest
 from dcoup_variant import distributing_coupling_variant
+from records import flange_tip_stress_curve, result
 
 from benchmark_parameters import COARSE, FINE, IPE200_TORSION, MEDIUM, MeshLevel
 from dat import read_printed_displacements
@@ -13,6 +14,7 @@ from runner import (
     find_ccx,
     run_benchmark,
     run_ccx,
+    tip_zone,
 )
 
 CCX = find_ccx()
@@ -161,3 +163,13 @@ def test_broken_deck_raises_instead_of_returning_results(tmp_path):
     assert broken != deck
     with pytest.raises(CcxError, match=r"(?s)ccx failed .*ERROR"):
         run_ccx(broken, tmp_path / "broken", CCX)
+
+
+def test_tip_zone_reads_onset_plateau_and_quarter_span_gap_from_the_flange_tip_curve():
+    # The hand-made curve is the end-corrected Vlasov curve, 1 % below it at L/4, 5 % above it
+    # from x = 1500 mm on, and falls from 16 to 11 MPa over x = 2000 to 2800 mm.
+    curve = flange_tip_stress_curve(onset=1500.0, plateau=(16.0, 11.0), quarter_ratio=0.99)
+    zone = tip_zone(result(FINE, flange_tip_curve=curve), IPE200_TORSION)
+    assert zone.onset_x == 1500.0
+    assert (zone.plateau_min, zone.plateau_max) == pytest.approx((11.0, 16.0))
+    assert zone.quarter_span_vs_end_corrected == pytest.approx(-1.0)

@@ -14,7 +14,7 @@ from matplotlib.patches import Polygon
 from analytical import analytical_solution
 from benchmark_parameters import BenchmarkParameters
 from figure_data import MeshLevelResults, X, Y, Z
-from frd import FrdResults
+from frd import SXX, FrdResults
 from palette import INK, OUTLINE, SECONDARY_INK, STEEL
 
 RENDER_SIZE = (2400, 1400)
@@ -35,7 +35,7 @@ def beam_grid(frd: FrdResults) -> pv.UnstructuredGrid:
         np.array([frd.nodes[node] for node in ids]),
     )
     grid.point_data["u"] = np.array([frd.nodal_results["DISP"][node][:3] for node in ids])
-    grid.point_data["sigma_xx"] = np.array([frd.nodal_results["STRESS"][node][0] for node in ids])
+    grid.point_data["sigma_xx"] = np.array([frd.nodal_results["STRESS"][node][SXX] for node in ids])
     return grid
 
 

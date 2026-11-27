@@ -4,10 +4,10 @@ import pytest
 
 from benchmark_parameters import COARSE, IPE200_TORSION
 from deck import (
-    BOTTOM_FLANGE_CENTRE_LINE,
+    BOTTOM_FLANGE_MID_PLANE_CENTRE_NODES,
     FLANGE_TIP_EDGES,
     MIDSPAN_FLANGE_SURFACES,
-    TOP_FLANGE_CENTRE_LINE,
+    TOP_FLANGE_MID_PLANE_CENTRE_NODES,
     generate_deck,
 )
 from frd import read_frd
@@ -52,9 +52,12 @@ def test_coarse_mesh_matches_the_ipe200_bending_benchmark(coarse_deck, coarse_fr
     assert coarse_deck.node_count == 3164
 
 
-def test_flange_centre_lines_lie_on_the_flange_mid_planes_over_the_web(coarse_deck, coarse_frd):
+def test_flange_mid_plane_centre_nodes_lie_over_the_web(coarse_deck, coarse_frd):
     # h_m / 2 = 95.75 mm; the web footprint is |z| <= t_w / 2 = 2.8 mm.
-    for name, y in ((TOP_FLANGE_CENTRE_LINE, 95.75), (BOTTOM_FLANGE_CENTRE_LINE, -95.75)):
+    for name, y in (
+        (TOP_FLANGE_MID_PLANE_CENTRE_NODES, 95.75),
+        (BOTTOM_FLANGE_MID_PLANE_CENTRE_NODES, -95.75),
+    ):
         coordinates = [coarse_frd.nodes[n] for n in coarse_deck.node_sets[name]]
         assert all(c[1] == pytest.approx(y) and abs(c[2]) <= 2.8 for c in coordinates)
         assert {c[0] for c in coordinates} >= {0.0, 1500.0, 3000.0}

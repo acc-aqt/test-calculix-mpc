@@ -139,7 +139,7 @@ The twist φ(L) at the tip face, the measured value checked against the Vlasov t
 _Avoid_: Tip rotation, end rotation, rotation angle
 
 **Twist**:
-The rotation φ(x) of a cross-section about the x axis, measured as φ = (u_z,top − u_z,bottom)/h_m from the flange mid-plane centre nodes at each x station; positive for the torque about +x.
+How far a cross-section turns about the x axis, φ(x) in rad, measured as φ = (u_z,top − u_z,bottom)/h_m from the flange mid-plane centre nodes at each x station; positive for the torque about +x.
 _Avoid_: Rotation, angle of twist
 
 **St-Venant torsion**:
@@ -167,12 +167,16 @@ _Avoid_: Sectorial moment of inertia, C_w, Γ
 _Avoid_: Torsion coefficient, decay constant
 
 **Sectorial coordinate**:
-The thin-walled warping function ω, equal to y·z on the flange mid-planes, with magnitude h_m·b/4 at the four flange tips.
+The thin-walled coordinate ω that gives the shape of the warping over the section, ω = y·z on the flange mid-planes, with magnitude h_m·b/4 at the four flange tips.
 _Avoid_: Warping function, unit warping
 
 **Warping stress**:
 The normal stress σ_w = −E·y·z·φ''(x) from restrained warping, linear across each flange width and opposite in sign on the two edges of a flange and on the two flanges. Its flange-tip magnitude E·ω·φ'' at x = L/4 is the warping stress target.
 _Avoid_: Bimoment stress, warping normal stress, σ_xx
+
+**Bimoment**:
+The stress resultant of the warping stress, B(x) = −E·I_w·φ''(x), signed so that σ_w = B·ω/I_w with ω = y·z, consistent with σ_w = −E·y·z·φ''(x). For the torque about +x, φ'' > 0, so B is negative; its magnitude is largest at the root and falls to zero at the tip face, which is free to warp.
+_Avoid_: Warping moment, flange moment
 
 **Flange-tip edges**:
 The four edges along x at the outer ends of the flange widths (y = ±h/2 … ±(h/2 − t_f), z = ±b/2), where warping stress is largest.

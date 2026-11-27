@@ -19,8 +19,8 @@ ROOT_FACE = "ROOT"
 TIP_FACE = "TIPFACE"
 TIP_SURFACE = "TIPSURF"
 REFERENCE_NODE = "REFNODE"
-TOP_FLANGE_CENTRE_LINE = "TOPLINE"
-BOTTOM_FLANGE_CENTRE_LINE = "BOTLINE"
+TOP_FLANGE_MID_PLANE_CENTRE_NODES = "TOPLINE"
+BOTTOM_FLANGE_MID_PLANE_CENTRE_NODES = "BOTLINE"
 FLANGE_TIP_EDGES = ("TIPTOPNZ", "TIPTOPPZ", "TIPBOTNZ", "TIPBOTPZ")
 """The flange-tip edges at x = L/4 through the flange thickness: top flange at z = −b/2 and
 +b/2, then bottom flange at z = −b/2 and +b/2."""
@@ -97,10 +97,10 @@ def generate_deck(params: BenchmarkParameters, level: MeshLevel) -> Deck:
         ROOT_FACE: mesh.nodes_where(lambda i, j, k: i == 0),
         TIP_FACE: mesh.nodes_where(lambda i, j, k: i == tip),
         REFERENCE_NODE: (reference_node,),
-        TOP_FLANGE_CENTRE_LINE: mesh.nodes_where(
+        TOP_FLANGE_MID_PLANE_CENTRE_NODES: mesh.nodes_where(
             lambda i, j, k: j == top_mid_plane and in_web_footprint(k)
         ),
-        BOTTOM_FLANGE_CENTRE_LINE: mesh.nodes_where(
+        BOTTOM_FLANGE_MID_PLANE_CENTRE_NODES: mesh.nodes_where(
             lambda i, j, k: j == nf and in_web_footprint(k)
         ),
         MIDSPAN_FLANGE_SURFACES[0]: midspan_surface(top_surface),

@@ -5,12 +5,15 @@ from enum import Enum
 
 from analytical import AnalyticalSolution, analytical_solution
 from benchmark_parameters import FINE, BenchmarkParameters
-from runner import ZERO_TWIST_FRACTION, BenchmarkResult
+from runner import ONSET_MARGIN, PLATEAU_RANGE, ZERO_TWIST_FRACTION, BenchmarkResult, tip_zone
 
 TIP_TWIST_TOLERANCE_PERCENT = 8.0
 """Allowed |error| of φ(L) against the thin-walled Vlasov target. Wider than the stress
 tolerance because the thin-walled J overestimates the solid section's torsion constant."""
 WARPING_STRESS_TOLERANCE_PERCENT = 5.0
+FOLLOW_UP = "[#29](https://github.com/acc-aqt/test-calculix-mpc/issues/29)"
+"""The issue that follows up the tip load-introduction zone, linked from REPORT.md and
+FIGURES.md."""
 
 
 class Verdict(Enum):
@@ -99,12 +102,17 @@ def render_report(
         "face-based tip surface, not `*DISTRIBUTING COUPLING`, which drops a moment without a "
         "warning in ccx 2.24. See [ADR 0003](../../docs/adr/0003-torsion-coupling.md).",
         "",
-        *_theory_gap_section(analytical),
+        *_theory_gap_section(analytical, results, params),
     ]
     return "\n".join(lines)
 
 
-def _theory_gap_section(a: AnalyticalSolution) -> list[str]:
+def _theory_gap_section(
+    a: AnalyticalSolution, results: Sequence[BenchmarkResult], params: BenchmarkParameters
+) -> list[str]:
+    finest = max(results, key=lambda r: r.mesh_level.length_divisions)
+    zone = tip_zone(finest, params)
+    level = finest.mesh_level.name
     j_drop = (1 - a.end_corrected_torsion_constant / a.torsion_constant) * 100
     return [
         "## Expected gap to thin-walled theory",
@@ -127,18 +135,20 @@ def _theory_gap_section(a: AnalyticalSolution) -> list[str]:
         "which softens it a little more.",
         "- **The tip load-introduction zone.** The coupling spreads the torque over the tip face "
         "differently from the St-Venant shear flow, and the disturbance is not short. In the "
-        "committed run the flange-tip σ_w stays above Vlasov from about x ≈ 1200 mm to the tip "
-        "(on the fine level more than 2 % above the end-corrected curve), levelling off at "
-        "about 12–17 MPa between x = 2000 and 2800 mm, where Vlasov falls to a few MPa, and "
-        "dropping to near zero only at the tip face. All three mesh levels agree, so it is not "
-        "a discretisation error. x = L/4 is clear of it: there the fine level is −0.47 % from "
-        "the end-corrected curve. The φ(x) gap also grows past the end-corrected line over the "
-        "last third of the length. The likely cause, not proven, is that the coupling brings "
-        "most of the torque into the flanges as lateral shear, where Vlasov carries it almost "
+        f"committed run the flange-tip σ_w stays above Vlasov from about x ≈ {zone.onset_x:.0f} "
+        f"mm to the tip (on the {level} level more than {ONSET_MARGIN * 100:g} % above the "
+        "end-corrected curve), levelling off at about "
+        f"{zone.plateau_min:.0f}–{zone.plateau_max:.0f} MPa between x = {PLATEAU_RANGE[0]:.0f} "
+        f"and {PLATEAU_RANGE[1]:.0f} mm, where Vlasov falls to a few MPa, and dropping to near "
+        "zero only at the tip face. All three mesh levels agree, so it is not a discretisation "
+        f"error. x = L/4 is clear of it: there the {level} level is "
+        f"{zone.quarter_span_vs_end_corrected:+.2f} % from the end-corrected curve. The φ(x) "
+        "gap also grows past the end-corrected line over the last third of the length. The "
+        "likely cause, not proven, is that the coupling brings most of the torque into the "
+        "flanges as lateral shear, where Vlasov carries it almost "
         "entirely as St-Venant shear at a free tip; in an open section that difference settles "
         f"over about 1/λ ≈ {1 / a.torsion_parameter:.0f} mm rather than locally. See figures 1 "
-        "and 3 of [FIGURES.md](FIGURES.md) and the follow-up "
-        "[#29](https://github.com/acc-aqt/test-calculix-mpc/issues/29).",
+        f"and 3 of [FIGURES.md](FIGURES.md) and the follow-up {FOLLOW_UP}.",
         "",
         "Because the coarse mesh is slightly stiffer in torsion, the errors against the "
         "thin-walled targets grow a little as the mesh is refined, rather than shrink: the FE "
