@@ -25,6 +25,7 @@ def test_coarse_run_writes_a_report_with_version_table_coarse_row_and_no_verdict
     assert "| σ_yy(D), published (target) | −5.38 MPa |" in text
     assert "| coarse 6×4×2 | 48 | 349 | -5.424 | +0.82 | -3.820 |" in text
     assert "Verdict" in text and "not evaluated" in text
+    assert "| coarse 6×4×2 | -5.424 | -5.523 | +2.66 | -4.624 |" in text
     assert str(report) in capsys.readouterr().out
 
 

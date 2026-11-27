@@ -37,10 +37,10 @@ def test_result_records_carry_the_element_type_they_were_solved_with(coarse, coa
 
 
 @needs_ccx
-def test_coarse_c3d20_sigma_yy_at_d_is_compressive_and_differs_from_c3d20r(coarse, coarse_c3d20):
-    assert coarse_c3d20.stress_yy_at_d < 0
-    assert coarse_c3d20.stress_yy_at_d == pytest.approx(-5.38, rel=0.25)
-    assert coarse_c3d20.stress_yy_at_d != pytest.approx(coarse.stress_yy_at_d, abs=1e-3)
+def test_coarse_c3d20_sigma_yy_at_d_is_more_compressive_than_c3d20r(coarse, coarse_c3d20):
+    # First run: C3D20 -5.523 MPa (+2.66 %) against C3D20R -5.424 MPa (+0.82 %).
+    assert coarse_c3d20.stress_yy_at_d < coarse.stress_yy_at_d < 0
+    assert coarse_c3d20.stress_yy_at_d_error == pytest.approx(2.66, abs=0.01)
 
 
 @pytest.fixture(scope="module")
