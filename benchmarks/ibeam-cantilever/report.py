@@ -110,7 +110,8 @@ def _convergence_section(results: Sequence[BenchmarkResult]) -> list[str]:
         "## Convergence",
         "",
         "Deflections are magnitudes of u_y; stresses keep their sign. "
-        "Error = (FE − analytical) / analytical × 100, on magnitudes.",
+        "Error = (FE − analytical) / analytical × 100. Deflection errors use magnitudes. Stress "
+        "errors are signed, against +σ at the top flange and −σ at the bottom flange.",
         "",
         "| Mesh level | Elements | Nodes | δ ref node (mm) | δ web tip (mm) | Error vs EB (%) "
         "| Error vs Timoshenko (%) | σ_xx top (MPa) | Error (%) | σ_xx bottom (MPa) | Error (%) "

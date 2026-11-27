@@ -65,7 +65,7 @@ The analytical value an FE result is checked against: the Timoshenko deflection 
 _Avoid_: Reference value, expected value
 
 **Error**:
-The signed percentage difference (FE − analytical) / analytical × 100.
+The signed percentage difference (FE − analytical) / analytical × 100. Stress errors compare signed values: the analytical midspan stress is +σ at the top flange (tension) and −σ at the bottom flange (compression), so a flange with the wrong sign has a large error. Deflection errors compare magnitudes.
 _Avoid_: Deviation, discrepancy
 
 **Verdict**:

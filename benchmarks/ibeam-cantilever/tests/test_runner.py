@@ -48,7 +48,7 @@ def test_coarse_midspan_top_flange_is_stretched_and_bottom_flange_compressed_equ
 
 
 def test_coarse_midspan_stress_errors_are_within_ten_percent_of_beam_theory(coarse):
-    # P (L/2) c / I = 10000 x 1500 x 100 / 18455902.2 = 81.27 MPa; errors are on magnitudes.
+    # P (L/2) c / I = 10000 x 1500 x 100 / 18455902.2 = 81.27 MPa: +81.27 top, -81.27 bottom.
     assert coarse.midspan_top_stress_error == pytest.approx(0, abs=10)
     assert coarse.midspan_bottom_stress_error == pytest.approx(0, abs=10)
     assert coarse.midspan_top_sxx_width_mean == pytest.approx(81.27, rel=0.10)

@@ -51,22 +51,23 @@ class BenchmarkResult:
     def deflection_error(self) -> float:
         """% error of the reference-node tip deflection against the Timoshenko deflection."""
         target = self.analytical.timoshenko_deflection
-        return _percent_error(self.reference_node_uy, target)
+        return _percent_error(abs(self.reference_node_uy), target)
 
     @property
     def euler_bernoulli_deflection_error(self) -> float:
         """% error of the reference-node tip deflection against the Euler-Bernoulli deflection."""
-        return _percent_error(self.reference_node_uy, self.analytical.euler_bernoulli_deflection)
+        target = self.analytical.euler_bernoulli_deflection
+        return _percent_error(abs(self.reference_node_uy), target)
 
     @property
     def midspan_top_stress_error(self) -> float:
-        """% error of |midspan_top_sxx_width_mean| against the analytical midspan stress."""
+        """Signed % error against +midspan stress: the top flange is in tension."""
         return _percent_error(self.midspan_top_sxx_width_mean, self.analytical.midspan_stress)
 
     @property
     def midspan_bottom_stress_error(self) -> float:
-        """% error of |midspan_bottom_sxx_width_mean| against the analytical midspan stress."""
-        return _percent_error(self.midspan_bottom_sxx_width_mean, self.analytical.midspan_stress)
+        """Signed % error against -midspan stress: the bottom flange is in compression."""
+        return _percent_error(self.midspan_bottom_sxx_width_mean, -self.analytical.midspan_stress)
 
 
 def find_ccx() -> Path | None:
@@ -133,7 +134,7 @@ def run_benchmark(
 
 
 def _percent_error(value: float, target: float) -> float:
-    return (abs(value) - target) / target * 100
+    return (value - target) / target * 100
 
 
 def _mean_sxx(stresses: NodalValues, nodes: tuple[int, ...]) -> float:

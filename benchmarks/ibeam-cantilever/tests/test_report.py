@@ -1,3 +1,5 @@
+import pytest
+
 from analytical import analytical_solution
 from benchmark_parameters import COARSE, FINE, IPE200_CANTILEVER, MEDIUM
 from report import verdict
@@ -48,3 +50,10 @@ def test_root_peak_stress_never_affects_the_verdict():
 
 def test_no_verdict_without_the_fine_mesh():
     assert verdict([result(COARSE), result(MEDIUM)]) is None
+
+
+def test_stress_errors_are_signed_so_a_flipped_flange_sign_fails():
+    flipped = result(FINE, top_ratio=-1.0, bottom_ratio=-1.0)
+    assert flipped.midspan_top_stress_error == pytest.approx(-200)
+    assert flipped.midspan_bottom_stress_error == pytest.approx(-200)
+    assert verdict([flipped]) == "FAIL"

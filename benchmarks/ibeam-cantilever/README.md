@@ -73,9 +73,10 @@ finish the job. On exit code 2 the command prints the `*ERROR` lines and writes 
 - **Section properties and targets** are the hand-checkable analytical values: A, I, the shear
   area A_s, the Euler-Bernoulli deflection (information only), and the Timoshenko deflection and
   midspan stress, which are the targets.
-- **Convergence** has one row per mesh level. Error = (FE − analytical) / analytical × 100, on
-  magnitudes. Tip deflection is the reference node's u_y, which is read from the `.dat` because
-  ccx doesn't write the reference node to the `.frd`. The web-centreline tip node is listed next
+- **Convergence** has one row per mesh level. Error = (FE − analytical) / analytical × 100.
+  Deflection errors use magnitudes. Stress errors are signed: the analytical midspan stress is +σ
+  at the top flange and −σ at the bottom flange, so a flange with the wrong sign fails.
+  Tip deflection is the reference node's u_y, which is read from the `.dat` because ccx doesn't write the reference node to the `.frd`. The web-centreline tip node is listed next
   to it as a check on the coupling. Midspan σ_xx is averaged across the full flange width on the
   outer flange surface at x = L/2. Stresses keep their sign: the top flange is in tension and the
   bottom flange in compression. Spec #1 has these signs the wrong way round. The root peak von
