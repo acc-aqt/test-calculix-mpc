@@ -1,7 +1,7 @@
 import pytest
 from dcoup_variant import distributing_coupling_variant
 
-from benchmark_parameters import COARSE, IPE200_TORSION, MEDIUM, MeshLevel
+from benchmark_parameters import COARSE, FINE, IPE200_TORSION, MEDIUM, MeshLevel
 from dat import read_printed_displacements
 from deck import REFERENCE_NODE, generate_deck
 from frd import read_frd
@@ -88,15 +88,28 @@ def test_flange_tip_warping_stresses_at_quarter_span_show_the_plus_minus_minus_p
     assert all(0 < e <= WARPING_STRESS_TOLERANCE_PERCENT for e in result.warping_stress_errors)
 
 
+@pytest.fixture(scope="module")
+def fine(tmp_path_factory):
+    # About 25 s: the fine level is solved here rather than read from the committed report, so
+    # the convergence check runs on fresh results.
+    return run_benchmark(FINE, IPE200_TORSION, tmp_path_factory.mktemp("work"), CCX)
+
+
 @needs_ccx
-def test_medium_warping_stress_errors_settle_within_half_a_point_of_coarse(coarse, medium):
-    # Prototype: +3.43 % coarse, +3.84 % medium, +4.10 % fine at every flange tip. The coarse
-    # mesh is stiffer in torsion, so as the mesh converges the FE moves away from the thin-walled
-    # target towards the solid section's answer (about +4.6 % with the end-corrected J). The
-    # medium errors are therefore slightly larger than the coarse ones, not smaller.
-    for c, m in zip(coarse.warping_stress_errors, medium.warping_stress_errors, strict=True):
-        assert c == pytest.approx(3.43, abs=0.05)
-        assert m == pytest.approx(c, abs=0.5)
+def test_tip_twist_and_quarter_span_warping_stresses_converge_with_mesh_level(coarse, medium, fine):
+    # Prototype: phi(L) 0.27599, 0.27724, 0.27782 rad; sigma_w +3.43 %, +3.84 %, +4.10 % at
+    # every flange tip. The coarse mesh is stiffer in torsion, so as the mesh converges the FE
+    # moves away from the thin-walled target towards the solid section's answer (about +4.6 %
+    # with the end-corrected J). The errors against the target therefore grow slightly with
+    # refinement, but the change between successive mesh levels shrinks.
+    assert abs(medium.tip_twist - coarse.tip_twist) > abs(fine.tip_twist - medium.tip_twist)
+    for c, m, f in zip(
+        coarse.flange_tip_warping_stresses,
+        medium.flange_tip_warping_stresses,
+        fine.flange_tip_warping_stresses,
+        strict=True,
+    ):
+        assert abs(m - c) > abs(f - m)
 
 
 @needs_ccx
