@@ -17,6 +17,7 @@ from matplotlib.ticker import MaxNLocator
 
 from analytical import (
     analytical_solution,
+    bending_stress_at,
     euler_bernoulli_deflection_at,
     timoshenko_deflection_at,
 )
@@ -193,7 +194,7 @@ def depth_stress_figure(
     levels: Sequence[MeshLevelResults], params: BenchmarkParameters, path: Path
 ) -> str:
     a = analytical_solution(params)
-    midspan_moment = params.tip_load * params.length / 2
+    midspan = params.length / 2
     half_h, t_f = params.section.height / 2, params.section.flange_thickness
     y = np.linspace(-half_h, half_h, 101)
     fig, (profile, difference) = _figure(1, 2, figsize=(8, 5.2), sharey=True, width_ratios=(3, 2))
@@ -205,15 +206,13 @@ def depth_stress_figure(
     profile.text(
         80, -half_h + t_f / 2, "bottom flange", va="center", ha="right", color=SECONDARY_INK
     )
-    profile.plot(
-        midspan_moment * y / a.second_moment_of_area, y, color=INK, linewidth=1, label="M·y/I"
-    )
+    profile.plot(bending_stress_at(params, midspan, y), y, color=INK, linewidth=1, label="M·y/I")
     difference.axvline(0, color=INK, linewidth=1)
     for level in levels:
         s = level.series
         style = _level_marker_style(s)
         profile.plot(s.depth_sxx, s.depth_y, **style)
-        expected = midspan_moment * s.depth_y / a.second_moment_of_area
+        expected = bending_stress_at(params, midspan, s.depth_y)
         difference.plot(s.depth_sxx - expected, s.depth_y, **style)
 
     profile.set_title("σ_xx through the depth at x = L/2 (z = 0)")
@@ -226,7 +225,7 @@ def depth_stress_figure(
     fig.savefig(path)
 
     fine = levels[-1].series
-    expected = midspan_moment * fine.depth_y / a.second_moment_of_area
+    expected = bending_stress_at(params, midspan, fine.depth_y)
     return (
         "Nodal σ_xx at midspan (x = L/2) on the mid-plane z = 0, through the web and both "
         "flanges, for each mesh level against the linear beam-theory distribution M·y/I with "
@@ -245,7 +244,7 @@ def flange_stress_figure(
     length, h = params.length, params.section.height
 
     def moment_diagram(x):
-        return params.tip_load * (length - x) * a.outer_fibre_distance / a.second_moment_of_area
+        return bending_stress_at(params, x, a.outer_fibre_distance)
 
     x = np.linspace(0, length, 301)
     fig, (along, difference) = _figure(2, 1, figsize=(8, 6.4), sharex=True, height_ratios=(3, 2))
@@ -309,7 +308,7 @@ def flange_stress_figure(
 def convergence_figure(
     levels: Sequence[MeshLevelResults], params: BenchmarkParameters, path: Path
 ) -> str:
-    a = analytical_solution(params)
+    root_bending = bending_stress_at(params, 0.0, analytical_solution(params).outer_fibre_distance)
     points = [level.series.convergence for level in levels]
     nodes = [p.node_count for p in points]
     names = [level.series.mesh_level.name for level in levels]
@@ -357,10 +356,10 @@ def convergence_figure(
     band_view.set_ylabel("error (%)")
     close_view.legend(loc="lower right")
 
-    root.axhline(2 * a.midspan_stress, color=INK, linewidth=1, linestyle="--")
+    root.axhline(root_bending, color=INK, linewidth=1, linestyle="--")
     root.annotate(
-        f"beam theory P·L·c/I = {2 * a.midspan_stress:.1f} MPa",
-        (nodes[-1], 2 * a.midspan_stress),
+        f"beam theory P·L·c/I = {root_bending:.1f} MPa",
+        (nodes[-1], root_bending),
         xytext=(0, -4),
         textcoords="offset points",
         ha="right",
@@ -385,7 +384,7 @@ def convergence_figure(
         )
     root.set_title("Root peak von Mises (information only)")
     root.set_ylabel("von Mises (MPa)")
-    root.set_ylim(0.9 * 2 * a.midspan_stress, 1.1 * max(p.root_peak_von_mises for p in points))
+    root.set_ylim(0.9 * root_bending, 1.1 * max(p.root_peak_von_mises for p in points))
     root.legend(loc="upper left")
 
     for ax in (band_view, close_view, root):
@@ -406,7 +405,7 @@ def convergence_figure(
         "refinement; the top- and bottom-flange stress errors are equal and their markers "
         "overlap. Right: the root peak von Mises stress grows with every refinement "
         f"({roots} MPa) and moves away from the beam-theory root bending stress "
-        f"P·L·c/I = {2 * a.midspan_stress:.1f} MPa. That is the expected stress singularity "
+        f"P·L·c/I = {root_bending:.1f} MPa. That is the expected stress singularity "
         "where the fixed root face meets the free surfaces, which is why the root stress is "
         "information only and does not enter the verdict."
     )

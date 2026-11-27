@@ -89,9 +89,7 @@ def test_deflection_curves_at_midspan():
     assert euler_bernoulli_deflection_at(IPE200_CANTILEVER, 1500.0) == pytest.approx(
         7.25668, rel=1e-5
     )
-    assert timoshenko_deflection_at(IPE200_CANTILEVER, 1500.0) == pytest.approx(
-        7.42986, rel=1e-5
-    )
+    assert timoshenko_deflection_at(IPE200_CANTILEVER, 1500.0) == pytest.approx(7.42986, rel=1e-5)
 
 
 def test_deflection_curves_accept_arrays_of_positions():

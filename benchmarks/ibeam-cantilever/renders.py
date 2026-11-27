@@ -15,7 +15,7 @@ from matplotlib.figure import Figure
 from matplotlib.lines import Line2D
 from matplotlib.patches import Patch
 
-from analytical import analytical_solution
+from analytical import bending_stress_at
 from benchmark_parameters import BenchmarkParameters
 from deck import (
     MIDSPAN_BOTTOM_FLANGE,
@@ -245,7 +245,7 @@ def stress_figure(
     level = levels[-1]
     name = level.result.mesh_level.name
     grid = beam_grid(level.frd)
-    root_bending = 2 * analytical_solution(params).midspan_stress
+    root_bending = bending_stress_at(params, 0.0, params.section.height / 2)
     limit = 10 * np.ceil(root_bending / 10)
     stress_clim = (-limit, limit)
     near_root = _cells_where(grid, lambda x: x < 2 * params.section.height)
