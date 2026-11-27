@@ -33,6 +33,12 @@ def test_report_lists_parameters_and_targets():
     assert "58.68 MPa" in text and "148.84 MPa" in text and "69.10 MPa" in text
 
 
+def test_report_lists_the_end_corrected_j_and_its_tip_twist_for_information():
+    text = render_report([result(COARSE)], IPE200_TORSION, "Version 2.24")
+    assert "| J, end-corrected (information) | 49255.3 mm⁴ |" in text
+    assert "| φ(L), Vlasov with end-corrected J (information) | 0.27313 rad |" in text
+
+
 def test_convergence_row_shows_tip_twist_and_its_errors_against_vlasov_and_st_venant():
     text = render_report([result(COARSE, tip_ratio=1.05)], IPE200_TORSION, "Version 2.24")
     # 1.05 x 0.26275 = 0.27589 rad; against phi_SV: 0.275888 / 0.359533 - 1 = -23.27 %.

@@ -78,6 +78,10 @@ def _targets_section(a: AnalyticalSolution) -> list[str]:
         f"| ω = h_m·b/4 at the flange tips | {a.flange_tip_sectorial_coordinate:g} mm² |",
         f"| φ_SV(L) = TL/(GJ) (information) | {a.st_venant_tip_twist:.5f} rad |",
         f"| φ(L), Vlasov (target) | {a.tip_twist:.5f} rad |",
+        "| J, end-corrected (information) | "
+        f"{a.end_corrected_torsion_constant:.1f} mm⁴ |",
+        "| φ(L), Vlasov with end-corrected J (information) | "
+        f"{a.end_corrected_tip_twist:.5f} rad |",
         f"| σ_w = E·ω·φ''(L/4) at the flange tips (target) | "
         f"{a.quarter_span_warping_stress:.2f} MPa |",
         f"| σ_w at the root (information) | {a.root_warping_stress:.2f} MPa |",
