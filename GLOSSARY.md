@@ -1,6 +1,6 @@
 # CalculiX Cantilever Benchmarks
 
-Reproducible checks of CalculiX, set up and inspected through the `calculix-mcp-rs` MCP server, against closed-form beam theory for solid cantilevers with a tip load: an IPE 200 I-beam and a CHS 168.3 × 8 tube. Terms used by both benchmarks come first, then the terms of each benchmark.
+Reproducible checks of CalculiX, set up and inspected through the `calculix-mcp-rs` MCP server, against closed-form beam theory for solid cantilevers: an IPE 200 I-beam and a CHS 168.3 × 8 tube with a tip load, and the IPE 200 I-beam with a tip torque. Terms used by both benchmarks come first, then the terms of each benchmark.
 
 ## Shared
 
@@ -125,3 +125,71 @@ _Avoid_: Convergence rate
 
 **Tube verdict**:
 PASS when the fine mesh level's deflection error and the midspan stress fit errors at both fibres are within ±1 %, and the midspan stress fit error magnitude strictly decreases coarse → medium → fine at both fibres; otherwise FAIL. There is no verdict unless all three mesh levels were run.
+
+## IPE 200 torsion
+
+The solid I-beam, root face, tip face, mesh level, IPE 200 mesh level, error and target carry over from above. The reference node carries the torque instead of a tip load, and it is not measured (see **Distributing *COUPLING**).
+
+**Torque**:
+The tip load of the torsion benchmark, T = 5·10⁵ N·mm about +x by the right-hand rule, applied as `*CLOAD` on DOF 4 of the reference node. It turns the top flange towards +z.
+_Avoid_: Moment, twisting moment, torsional load
+
+**Tip twist**:
+The twist φ(L) at the tip face, the measured value checked against the Vlasov twist.
+_Avoid_: Tip rotation, end rotation, rotation angle
+
+**Twist**:
+How far a cross-section turns about the x axis, φ(x) in rad, measured as φ = (u_z,top − u_z,bottom)/h_m from the flange mid-plane centre nodes at each x station; positive for the torque about +x.
+_Avoid_: Rotation, angle of twist
+
+**St-Venant torsion**:
+Torsion carried by shear stresses circulating in the section alone, with the section free to warp everywhere; it gives the twist φ_SV = T·x/(GJ), reported for information.
+_Avoid_: Uniform torsion, pure torsion, free torsion
+
+**Warping**:
+The axial displacement u_x of a twisted open section, varying linearly across each flange width and changing sign at the web. The fixed root face restrains it; the tip face is free to warp.
+_Avoid_: Out-of-plane displacement, axial distortion
+
+**Vlasov twist**:
+The twist of mixed torsion with warping restrained at the root and free at the tip, φ(x) = T/(GJ)·[x − (sinh λL − sinh λ(L−x))/(λ·cosh λL)]. Its tip value is the twist target.
+_Avoid_: Warping-torsion twist, non-uniform twist, Timoshenko torsion
+
+**Torsion constant**:
+The St-Venant torsion constant of the thin-walled section, J = (2·b·t_f³ + (h − 2t_f)·t_w³)/3.
+_Avoid_: Polar moment, J_t, torsional inertia
+
+**Warping constant**:
+I_w = I_f·h_m²/2, with I_f = t_f·b³/12 the second moment of one flange about its own vertical axis and h_m = h − t_f the distance between the flange mid-planes.
+_Avoid_: Sectorial moment of inertia, C_w, Γ
+
+**Torsion parameter**:
+λ = √(GJ/(E·I_w)). λL ≈ 3.7 for this beam says how far warping restraint reaches: it cuts the tip twist to about 73 % of St-Venant.
+_Avoid_: Torsion coefficient, decay constant
+
+**Sectorial coordinate**:
+The thin-walled coordinate ω that gives the shape of the warping over the section, ω = y·z on the flange mid-planes, with magnitude h_m·b/4 at the four flange tips.
+_Avoid_: Warping function, unit warping
+
+**Warping stress**:
+The normal stress σ_w = −E·y·z·φ''(x) from restrained warping, linear across each flange width and opposite in sign on the two edges of a flange and on the two flanges. Its flange-tip magnitude E·ω·φ'' at x = L/4 is the warping stress target.
+_Avoid_: Bimoment stress, warping normal stress, σ_xx
+
+**Bimoment**:
+The stress resultant of the warping stress, B(x) = −E·I_w·φ''(x), signed so that σ_w = B·ω/I_w with ω = y·z, consistent with σ_w = −E·y·z·φ''(x). For the torque about +x, φ'' > 0, so B is negative; its magnitude is largest at the root and falls to zero at the tip face, which is free to warp.
+_Avoid_: Warping moment, flange moment
+
+**Flange-tip edges**:
+The four edges along x at the outer ends of the flange widths (y = ±h/2 … ±(h/2 − t_f), z = ±b/2), where warping stress is largest.
+_Avoid_: Flange corners, flange edges
+
+**Flange mid-plane centre nodes**:
+The nodes on each flange mid-plane (y = ±h_m/2) over the web footprint (|z| ≤ t_w/2), whose mean u_z at each x station gives the twist. Over the web footprint rather than only at z = 0, because a mesh level with an odd number of elements through the flange thickness has no node at the centre.
+_Avoid_: Centre-line nodes, twist nodes
+
+**Distributing *COUPLING**:
+The CalculiX `*COUPLING` + `*DISTRIBUTING` (DOFs 1–6) constraint that spreads the reference node's torque over a face-based tip surface without stiffening it, so the tip face can warp. Unlike `*DISTRIBUTING COUPLING`, which silently drops a moment, it carries the torque. ccx reports the reference node's displacement as zero under it. See ADR 0003.
+_Avoid_: Coupling, MPC, distributing coupling (that is the `*DISTRIBUTING COUPLING` card above)
+
+**Zero-twist guard**:
+The check that stops a run whose |φ(L)| is below 1 % of the St-Venant tip twist with an error and no report, so a load introduction that drops the torque cannot pass quietly.
+_Avoid_: Sanity check, zero check
