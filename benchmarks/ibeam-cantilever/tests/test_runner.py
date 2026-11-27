@@ -1,6 +1,6 @@
 import pytest
 
-from benchmark_parameters import COARSE, IPE200_CANTILEVER, MEDIUM
+from benchmark_parameters import COARSE, IPE200_CANTILEVER, MEDIUM, MeshLevel
 from deck import generate_deck
 from runner import CcxError, find_ccx, run_benchmark, run_ccx
 
@@ -27,6 +27,7 @@ def test_medium_mesh_is_closer_to_timoshenko_than_coarse_and_within_five_percent
     assert medium.deflection_error == pytest.approx(0, abs=5)
     assert medium.midspan_top_stress_error == pytest.approx(0, abs=5)
     assert medium.midspan_bottom_stress_error == pytest.approx(0, abs=5)
+    assert medium.web_centreline_tip_uy == pytest.approx(medium.reference_node_uy, rel=0.01)
 
 
 def test_coarse_reference_node_deflects_down_close_to_timoshenko(coarse):
@@ -57,6 +58,12 @@ def test_coarse_midspan_stress_errors_are_within_ten_percent_of_beam_theory(coar
 def test_coarse_root_peak_von_mises_is_at_least_the_beam_theory_root_bending_stress(coarse):
     # P L c / I = 10000 x 3000 x 100 / 18455902.2 = 162.55 MPa; the fixed end adds to it.
     assert coarse.root_peak_von_mises >= 162.55
+
+
+def test_odd_length_divisions_are_rejected_because_midspan_needs_a_node_plane(tmp_path):
+    odd = MeshLevel("odd", 1, 4, length_divisions=31)
+    with pytest.raises(ValueError, match="even"):
+        run_benchmark(odd, IPE200_CANTILEVER, tmp_path, CCX)
 
 
 def test_broken_deck_raises_instead_of_returning_results(tmp_path):
