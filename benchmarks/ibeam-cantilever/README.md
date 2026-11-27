@@ -21,8 +21,9 @@ environment named `calculix-bench`, defined in `environment.yml`.
    micromamba create -y -f environment.yml
    ```
 
-   This installs `calculix` 2.24 (`ccx`), Python 3.12, numpy, pytest and ruff into
-   `$HOME/micromamba/envs/calculix-bench`.
+   This installs `calculix` 2.24 (`ccx`), Python 3.12, numpy, PyVista, matplotlib, pytest and
+   ruff into `$HOME/micromamba/envs/calculix-bench`. PyVista and matplotlib are only needed for
+   the figures.
 
 3. Check the solver:
 
