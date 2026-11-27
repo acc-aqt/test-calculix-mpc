@@ -135,7 +135,24 @@ def test_report_shows_the_observed_order_and_n_a_when_it_is_not_defined():
     ]
     text = render_report(levels, CHS168_CANTILEVER, "Version 2.24")
     assert "| Deflection vs δ_T | n/a |" in text
-    assert "| Midspan stress fit | 2.70 |" in text
+    assert "| Midspan stress fit, top fibre | 2.70 |" in text
+    assert "| Midspan stress fit, bottom fibre | 2.70 |" in text
+
+
+def test_report_fails_when_only_the_bottom_fibre_fit_is_out_of_tolerance():
+    levels = [
+        result(COARSE, 1.0, 1.005, 1.05),
+        result(MEDIUM, 1.0, 1.002, 1.03),
+        result(FINE, 1.0, 1.001, 1.011),
+    ]
+    text = render_report(levels, CHS168_CANTILEVER, "Version 2.24")
+    assert "Verdict: **FAIL**" in text
+
+
+def test_report_says_the_fit_has_an_intercept_so_each_fibre_is_measured_separately():
+    text = render_report(converging(), CHS168_CANTILEVER, "Version 2.24")
+    assert "σ_xx = a·y + b" in text
+    assert "a·r_o + b at the top fibre and −a·r_o + b at the bottom fibre" in text
 
 
 def test_report_calls_the_deflection_floor_a_modelling_residual():

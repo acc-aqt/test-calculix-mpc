@@ -216,7 +216,7 @@ def model_figure(
         "node (red ring) is an extra node in the empty middle of the tube; it is not in the "
         "`.frd`, so it is drawn at its position in the deck. Bottom right: the section at "
         f"x = L/2 with the {len(midspan)} midspan outer-surface nodes (green, corner and "
-        "midside), over which the midspan stress fit σ_xx = a·y is taken, and the top- and "
+        "midside), over which the midspan stress fit σ_xx = a·y + b is taken, and the top- and "
         "bottom-fibre nodes (blue), whose single-node σ_xx is reported next to the fit. The "
         "outer-surface nodes are also marked on the whole tube at the top."
     )

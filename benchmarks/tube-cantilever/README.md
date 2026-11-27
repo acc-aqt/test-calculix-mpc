@@ -50,12 +50,13 @@ micromamba run -p "$HOME/micromamba/envs/calculix-bench" python benchmark.py
 This runs the coarse, medium and fine mesh levels (about 10 s in total, most of it the fine level)
 and writes `REPORT.md`, which is committed. Options:
 
-- `--levels coarse medium` runs only the levels you name. Without `fine` there's no verdict.
+- `--levels coarse medium` runs only the levels you name. A verdict needs all three levels, so a
+  partial run gives none.
 - `--report <path>` writes the report somewhere else.
 - `--work-dir <dir>` changes where decks and solver output go. The default is `work/<mesh
   level>/tube.inp` (and `.frd`, `.dat`, ...) in this folder, which git ignores.
-- `--ccx <path>` sets the solver. Without it, the command uses `$CCX`, then `ccx` on `PATH`, then
-  the environment's `ccx`.
+- `--ccx <path or name>` sets the solver; a bare name is looked up on `PATH`. Without it, the
+  command uses `$CCX`, then `ccx` on `PATH`, then the environment's `ccx`.
 
 Exit codes: `0` PASS (or no verdict), `1` FAIL, `2` when `ccx` is missing, fails or doesn't
 finish the job. On exit code 2 the command prints the `*ERROR` lines and writes no report.
@@ -74,8 +75,9 @@ finish the job. On exit code 2 the command prints the `*ERROR` lines and writes 
   Tip deflection is the reference node's u_y, read from the `.dat` because ccx doesn't write the
   reference node to the `.frd`. The tip-face mean deflection is listed next to it as a check on
   the coupling (the tube has no material at its centroid, so there is no centreline node).
-  The midspan stress is the midspan stress fit σ_xx = a·y over every midspan outer-surface node,
-  reported as +a·r_o and −a·r_o; the single-node σ_xx at the top-fibre and bottom-fibre nodes is
+  The midspan stress is the midspan stress fit σ_xx = a·y + b over every midspan outer-surface
+  node, reported as a·r_o + b and −a·r_o + b, so each fibre is checked on its own; the single-node
+  σ_xx at the top-fibre and bottom-fibre nodes is
   shown next to it. The root peak von Mises stress is for information only and grows as the mesh
   level gets finer.
 - **Observed order** is reported for information for the deflection, the fit and the single-node

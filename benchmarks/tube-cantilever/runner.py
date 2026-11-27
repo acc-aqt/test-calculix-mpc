@@ -42,9 +42,10 @@ class BenchmarkResult:
     """Signed tip displacement in y at the reference node (negative under the -y load)."""
     tip_face_mean_uy: float
     midspan_top_fitted_sxx: float
-    """+a·r_o from the least-squares fit σ_xx = a·y over the midspan outer-surface nodes."""
+    """a·r_o + b from the least-squares fit σ_xx = a·y + b over the midspan outer-surface
+    nodes."""
     midspan_bottom_fitted_sxx: float
-    """−a·r_o from the same fit."""
+    """−a·r_o + b from the same fit."""
     top_fibre_sxx: float
     """Signed nodal σ_xx at the midspan top-fibre node (y = r_o)."""
     bottom_fibre_sxx: float
@@ -106,7 +107,7 @@ def find_ccx() -> Path | None:
 def ccx_version(ccx: Path) -> str:
     """The version line printed by `ccx -v`, e.g. "Version 2.24". ccx exits 201 here, so the
     exit code is ignored."""
-    completed = subprocess.run([str(ccx), "-v"], capture_output=True, text=True, check=False)
+    completed = _run([str(ccx), "-v"], cwd=None)
     match = re.search(r"Version \S+", completed.stdout)
     if match is None:
         raise CcxError(f"could not read the ccx version from `{ccx} -v`:\n{completed.stdout}")
@@ -117,9 +118,7 @@ def run_ccx(deck_text: str, job_dir: Path, ccx: Path) -> Path:
     """Write the deck into job_dir, solve it and return the .frd path. Raises CcxError."""
     job_dir.mkdir(parents=True, exist_ok=True)
     (job_dir / f"{JOB_NAME}.inp").write_text(deck_text)
-    completed = subprocess.run(
-        [str(ccx), "-i", JOB_NAME], cwd=job_dir, capture_output=True, text=True, check=False
-    )
+    completed = _run([str(ccx), "-i", JOB_NAME], cwd=job_dir)
     output = completed.stdout + completed.stderr
     frd = job_dir / f"{JOB_NAME}.frd"
     if completed.returncode != 0 or "Job finished" not in output or not frd.is_file():
@@ -127,6 +126,13 @@ def run_ccx(deck_text: str, job_dir: Path, ccx: Path) -> Path:
         detail = "\n".join(errors) or "\n".join(output.splitlines()[-20:])
         raise CcxError(f"ccx failed in {job_dir} (exit code {completed.returncode}):\n{detail}")
     return frd
+
+
+def _run(command: list[str], cwd: Path | None) -> subprocess.CompletedProcess:
+    try:
+        return subprocess.run(command, cwd=cwd, capture_output=True, text=True, check=False)
+    except OSError as error:
+        raise CcxError(f"could not run {command[0]}: {error}") from error
 
 
 def run_benchmark(
@@ -148,21 +154,26 @@ def benchmark_result(
     level: MeshLevel, params: BenchmarkParameters, deck: Deck, frd: FrdResults, dat: Path
 ) -> BenchmarkResult:
     """The result record of a mesh level from its deck and the .frd and .dat ccx wrote."""
+    missing = [name for name in ("DISP", "STRESS") if name not in frd.nodal_results]
+    if missing:
+        raise CcxError(f"ccx wrote no {' or '.join(missing)} block to the .frd in {dat.parent}")
     displacements, stresses = frd.nodal_results["DISP"], frd.nodal_results["STRESS"]
-    printed = read_printed_displacements(dat)[REFERENCE_NODE]
+    printed = read_printed_displacements(dat).get(REFERENCE_NODE) if dat.is_file() else None
+    if printed is None:
+        raise CcxError(f"ccx printed no {REFERENCE_NODE} displacements to {dat}")
     (reference,) = deck.node_sets[REFERENCE_NODE]
     (top,) = deck.node_sets[MIDSPAN_TOP_FIBRE]
     (bottom,) = deck.node_sets[MIDSPAN_BOTTOM_FIBRE]
     outer_radius = params.section.outer_radius
-    slope = _bending_stress_slope(frd, deck.node_sets[MIDSPAN_OUTER_SURFACE])
+    slope, intercept = _midspan_stress_fit(frd, deck.node_sets[MIDSPAN_OUTER_SURFACE])
     return BenchmarkResult(
         mesh_level=level,
         element_count=deck.element_count,
         node_count=deck.node_count,
         reference_node_uy=printed[reference][1],
         tip_face_mean_uy=_mean(displacements[n][1] for n in deck.node_sets[TIP_FACE]),
-        midspan_top_fitted_sxx=slope * outer_radius,
-        midspan_bottom_fitted_sxx=-slope * outer_radius,
+        midspan_top_fitted_sxx=slope * outer_radius + intercept,
+        midspan_bottom_fitted_sxx=-slope * outer_radius + intercept,
         top_fibre_sxx=stresses[top][0],
         bottom_fibre_sxx=stresses[bottom][0],
         root_peak_von_mises=max(von_mises(stresses[n]) for n in deck.node_sets[ROOT_FACE]),
@@ -170,12 +181,13 @@ def benchmark_result(
     )
 
 
-def _bending_stress_slope(frd: FrdResults, nodes: tuple[int, ...]) -> float:
-    """The slope a of the least-squares fit σ_xx = a·y through the origin over the nodes."""
+def _midspan_stress_fit(frd: FrdResults, nodes: tuple[int, ...]) -> tuple[float, float]:
+    """The slope a and intercept b of the least-squares fit σ_xx = a·y + b over the nodes."""
     stresses = frd.nodal_results["STRESS"]
     ys = [frd.nodes[n][1] for n in nodes]
     sxx = [stresses[n][0] for n in nodes]
-    return sum(y * s for y, s in zip(ys, sxx, strict=True)) / sum(y * y for y in ys)
+    slope, intercept = np.polyfit(ys, sxx, 1)
+    return float(slope), float(intercept)
 
 
 def _percent_error(value: float, target: float) -> float:

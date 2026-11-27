@@ -25,7 +25,8 @@ class FrdResults:
     nodes: dict[int, tuple[float, ...]]
     """Node id to (x, y, z)."""
     elements: dict[int, tuple[int, ...]]
-    """Element id to its node ids, in CalculiX order."""
+    """Element id to its node ids, in .frd order. For a 20-node hexahedron the midside nodes at
+    positions 13-16 and 17-20 are swapped against the deck; renders.vtk_hexahedron converts."""
     nodal_results: dict[str, NodalValues]
     """Nodal result blocks of the last step, keyed by block name (e.g. 'DISP', 'STRESS').
 

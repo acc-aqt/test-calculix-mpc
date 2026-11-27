@@ -116,7 +116,7 @@ The midspan outer-surface nodes at y = r_o and y = −r_o, whose single-node σ_
 _Avoid_: Top node, bottom node
 
 **Midspan stress fit**:
-The least-squares fit σ_xx = a·y through the origin over every midspan outer-surface node, giving the measured midspan stress +a·r_o at the top fibre and −a·r_o at the bottom fibre.
+The least-squares fit σ_xx = a·y + b over every midspan outer-surface node, giving the measured midspan stress a·r_o + b at the top fibre and −a·r_o + b at the bottom fibre. The intercept b lets the two fibres differ, so each is checked on its own.
 _Avoid_: Mean stress, regression stress
 
 **Observed order**:
@@ -124,4 +124,4 @@ The convergence order p = ln((e_c − e_m)/(e_m − e_f)) / ln 2 from the signed
 _Avoid_: Convergence rate
 
 **Tube verdict**:
-PASS when the fine mesh level's deflection error and the midspan stress fit errors at both fibres are within ±1 %, and the midspan stress fit error magnitude strictly decreases coarse → medium → fine at both fibres; otherwise FAIL. There is no verdict without the fine level.
+PASS when the fine mesh level's deflection error and the midspan stress fit errors at both fibres are within ±1 %, and the midspan stress fit error magnitude strictly decreases coarse → medium → fine at both fibres; otherwise FAIL. There is no verdict unless all three mesh levels were run.
