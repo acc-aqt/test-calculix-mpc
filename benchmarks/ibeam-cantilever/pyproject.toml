@@ -1,0 +1,15 @@
+[project]
+name = "ibeam-cantilever"
+version = "0.1.0"
+description = "IPE 200 solid cantilever in CalculiX vs analytical beam theory"
+requires-python = ">=3.12"
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "B", "UP"]
