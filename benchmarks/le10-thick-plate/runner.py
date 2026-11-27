@@ -124,6 +124,12 @@ def run_benchmark(
     )
 
 
+def result_files(level: MeshLevel, work_dir: Path, element_type: str = C3D20R) -> tuple[Path, Path]:
+    """The .frd and .dat a solved mesh level and element type leave in work_dir."""
+    job = work_dir / level.name / element_type / JOB_NAME
+    return job.with_suffix(".frd"), job.with_suffix(".dat")
+
+
 def benchmark_result(
     level: MeshLevel,
     element_type: str,
