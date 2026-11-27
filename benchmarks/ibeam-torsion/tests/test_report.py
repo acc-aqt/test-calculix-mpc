@@ -91,10 +91,40 @@ def test_report_lists_the_end_corrected_j_and_its_tip_twist_for_information():
     assert "| φ(L), Vlasov with end-corrected J (information) | 0.27313 rad |" in text
 
 
-def test_convergence_row_shows_tip_twist_and_its_errors_against_vlasov_and_st_venant():
-    text = render_report([result(COARSE, tip_ratio=1.05)], IPE200_TORSION, "Version 2.24")
+def test_convergence_row_shows_twist_flange_tip_stresses_shear_and_root_peak_with_errors():
+    record = result(COARSE, 1.05, (1.03, 1.03, 1.03, 1.03), shear=75.0, root_peak=300.0)
+    text = render_report([record], IPE200_TORSION, "Version 2.24")
     # 1.05 x 0.26275 = 0.27589 rad; against phi_SV: 0.275888 / 0.359533 - 1 = -23.27 %.
-    assert "| coarse | 420 | 3164 | 0.27589 | +5.00 | -23.27 |" in text
+    # 1.03 x 58.677 = 60.44 MPa; tau: 75.0 / 69.100 - 1 = +8.54 %.
+    assert (
+        "| coarse | 420 | 3164 | 0.27589 | +5.00 | -23.27 | +60.44 | +3.00 | -60.44 | +3.00 "
+        "| -60.44 | +3.00 | +60.44 | +3.00 | 75.00 | +8.54 | 300.00 |"
+    ) in text
+
+
+def test_report_shows_the_verdict_with_its_rule_and_the_sign_pattern():
+    text = render_report([result(COARSE), result(MEDIUM), result(FINE)], IPE200_TORSION, "V")
+    assert "- Verdict: **PASS**" in text
+    assert "## Verdict" in text
+    assert "≤ 8 %" in text and "≤ 5 %" in text
+    assert "+ − − +" in text
+
+
+def test_report_shows_fail_when_the_fine_level_fails():
+    text = render_report([result(FINE, 1.2)], IPE200_TORSION, "Version 2.24")
+    assert "- Verdict: **FAIL**" in text
+
+
+def test_report_explains_the_expected_gap_to_thin_walled_theory():
+    text = render_report([result(COARSE)], IPE200_TORSION, "Version 2.24")
+    for source in (
+        "end correction",
+        "web-flange junction",
+        "warping shear deformation",
+        "load-introduction zone",
+    ):
+        assert source in text
+    assert "| σ_w(L/4), Vlasov with end-corrected J (information) | 61.37 MPa |" in text
 
 
 def test_report_links_to_the_coupling_adr():
