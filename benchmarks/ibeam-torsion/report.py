@@ -104,15 +104,16 @@ def render_report(
 
 
 def _theory_gap_section(a: AnalyticalSolution) -> list[str]:
-    j_gap = (a.end_corrected_torsion_constant / a.torsion_constant - 1) * 100
+    j_drop = (1 - a.end_corrected_torsion_constant / a.torsion_constant) * 100
     return [
         "## Expected gap to thin-walled theory",
         "",
         "The targets come from thin-walled formulas, applied here to a solid section, so a few "
         "percent of difference is expected even on a converged mesh. The sources:",
         "",
-        "- **No end correction in Σbt³/3.** The thin-walled J ignores the unloaded plate ends. "
-        f"With the end correction (1 − 0.63·t/b) per plate, J is {j_gap:+.1f} %. The solid is "
+        "- **No end correction in Σbt³/3.** The thin-walled J ignores the plate ends, where the "
+        "shear flow turns round. With the end correction (1 − 0.63·t/b) per plate, J is "
+        f"{j_drop:.1f} % lower. The solid is "
         "softer in St-Venant torsion than the target assumes, so it twists more, and with the "
         "smaller λ warping carries more of the torque, which raises σ_w. With the end-corrected "
         f"J, Vlasov gives φ(L) = {a.end_corrected_tip_twist:.5f} rad and σ_w(L/4) = "
