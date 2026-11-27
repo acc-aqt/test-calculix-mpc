@@ -7,7 +7,7 @@ from enum import Enum
 from benchmark_parameters import COARSE, FINE, MEDIUM, BenchmarkParameters
 from deck import C3D20, C3D20R
 from reference import quarter_annulus_volume, target_stress_at_d, top_face_area
-from runner import BenchmarkResult
+from runner import REACTION_GUARD_TOLERANCE, VOLUME_GUARD_TOLERANCE, BenchmarkResult
 
 ADR = "[ADR 0004](../../docs/adr/0004-published-reference-value.md)"
 REFINEMENT_RATIO = 2
@@ -106,6 +106,7 @@ def render_report(
         "",
         *_c3d20_section(reduced, full),
         *_stress_at_d_section(reduced),
+        *_sanity_guards_section(reduced, params),
         "## How the values are measured",
         "",
         "- **σ_yy(D)** is ccx's nodal σ_yy at point D, read from the `.frd`: ccx extrapolates "
@@ -274,6 +275,38 @@ def _stress_at_d_section(results: Sequence[BenchmarkResult]) -> list[str]:
     for r in results:
         components = " | ".join(f"{s:.3f}" for s in r.stress_at_d)
         lines.append(f"| {r.mesh_level.name} | {components} | {r.von_mises_at_d:.3f} |")
+    lines.append("")
+    return lines
+
+
+def _sanity_guards_section(
+    results: Sequence[BenchmarkResult], params: BenchmarkParameters
+) -> list[str]:
+    volume = quarter_annulus_volume(params)
+    load = params.pressure * top_face_area(params)
+    volume_tolerance = VOLUME_GUARD_TOLERANCE * 100
+    reaction_tolerance = REACTION_GUARD_TOLERANCE * 100
+    lines = [
+        "## Sanity guards",
+        "",
+        "Every level passed both guards, or there would be no report. The mesh volume, "
+        f"integrated with the 20-node shape functions, must be within {volume_tolerance:g} % of "
+        f"the exact quarter-annulus volume, {volume:.0f} mm³. The total RF_z on line EE′ must be "
+        f"within {reaction_tolerance:g} % of the applied load p·A = {load:.1f} N. Differences "
+        "are (FE − exact) / exact × 100. The table shows the C3D20R levels.",
+        "",
+        "| Mesh level | Mesh volume (mm³) | Volume difference (%) | RF_z on EE′ (N) "
+        "| Reaction difference (%) |",
+        "|---|---:|---:|---:|---:|",
+    ]
+    for r in results:
+        volume_difference = (r.mesh_volume - volume) / volume * 100
+        reaction_difference = (r.reaction_z_on_ee - load) / load * 100
+        row = (
+            f"| {r.mesh_level.label} | {r.mesh_volume:.0f} | {volume_difference:+.6f} "
+            f"| {r.reaction_z_on_ee:.1f} | {reaction_difference:+.6f} |"
+        )
+        lines.append(row.replace("-", "−"))
     lines.append("")
     return lines
 
