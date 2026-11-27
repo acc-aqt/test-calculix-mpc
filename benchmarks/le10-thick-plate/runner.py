@@ -12,7 +12,7 @@ import numpy as np
 
 from benchmark_parameters import BenchmarkParameters, MeshLevel
 from dat import read_printed_integration_points
-from deck import POINT_D, Deck, generate_deck
+from deck import C3D20R, POINT_D, Deck, generate_deck
 from frd import SYY, FrdResults, read_frd
 from reference import target_stress_at_d
 
@@ -28,6 +28,8 @@ class CcxError(RuntimeError):
 @dataclass(frozen=True)
 class BenchmarkResult:
     mesh_level: MeshLevel
+    element_type: str
+    """C3D20R decides the verdict; C3D20 is information only."""
     element_count: int
     node_count: int
     stress_at_d: tuple[float, float, float, float, float, float]
@@ -99,14 +101,20 @@ def _run(command: list[str], cwd: Path | None) -> subprocess.CompletedProcess:
 
 
 def run_benchmark(
-    level: MeshLevel, params: BenchmarkParameters, work_dir: Path, ccx: Path
+    level: MeshLevel,
+    params: BenchmarkParameters,
+    work_dir: Path,
+    ccx: Path,
+    element_type: str = C3D20R,
 ) -> BenchmarkResult:
-    deck = generate_deck(params, level)
-    frd = run_ccx(deck.text, work_dir / level.name, ccx)
-    return benchmark_result(level, deck, read_frd(frd), frd.with_suffix(".dat"))
+    deck = generate_deck(params, level, element_type)
+    frd = run_ccx(deck.text, work_dir / level.name / element_type, ccx)
+    return benchmark_result(level, element_type, deck, read_frd(frd), frd.with_suffix(".dat"))
 
 
-def benchmark_result(level: MeshLevel, deck: Deck, frd: FrdResults, dat: Path) -> BenchmarkResult:
+def benchmark_result(
+    level: MeshLevel, element_type: str, deck: Deck, frd: FrdResults, dat: Path
+) -> BenchmarkResult:
     """The result record of a mesh level from its deck and the .frd and .dat ccx wrote.
 
     Raises CcxError when the .frd has no stresses or the .dat no integration-point stresses.
@@ -122,6 +130,7 @@ def benchmark_result(level: MeshLevel, deck: Deck, frd: FrdResults, dat: Path) -
     nearest = min(coordinates, key=lambda key: np.linalg.norm(coordinates[key] - point_d))
     return BenchmarkResult(
         mesh_level=level,
+        element_type=element_type,
         element_count=deck.element_count,
         node_count=deck.node_count,
         stress_at_d=frd.nodal_results["STRESS"][d][:6],
