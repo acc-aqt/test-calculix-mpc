@@ -106,6 +106,12 @@ def run_benchmark(
     return benchmark_result(level, deck, read_frd(frd), frd.with_suffix(".dat"))
 
 
+def result_files(level: MeshLevel, work_dir: Path) -> tuple[Path, Path]:
+    """The .frd and .dat a solved mesh level leaves in work_dir."""
+    job = work_dir / level.name / JOB_NAME
+    return job.with_suffix(".frd"), job.with_suffix(".dat")
+
+
 def benchmark_result(level: MeshLevel, deck: Deck, frd: FrdResults, dat: Path) -> BenchmarkResult:
     """The result record of a mesh level from its deck and the .frd and .dat ccx wrote.
 
