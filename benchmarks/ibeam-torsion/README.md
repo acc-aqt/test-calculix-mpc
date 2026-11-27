@@ -147,9 +147,9 @@ The MCP's own deck and `.frd` readers act as an independent check on the Python 
    job.
 4. `frd_summary` and `frd_sets` on the job's `.frd`, with `inp_path=work/medium/ibeam.inp`.
 5. `frd_query_set` on the job's `.frd`:
-   - for the tip twist nodes, with `inp_path` set to a `tiptwist.nam` file next to the deck that
-     holds the five tip nodes of each flange mid-plane centre line (`TOPLINE` and `BOTLINE` run
-     along the whole length):
+   - for the flange mid-plane centre nodes at the tip face, with `inp_path` set to a
+     `tiptwist.nam` file next to the deck that holds the five of them on each flange (`TOPLINE`
+     and `BOTLINE` hold them along the whole length):
 
      ```
      *NSET, NSET=TIPTOPC
@@ -201,7 +201,7 @@ Differences, and why they are not bugs in the benchmark:
   dataset"), because ccx doesn't write the reference node to the `.frd`. Its `.dat` value is zero,
   as ADR 0003 records, which is why the twist is measured on the beam.
 - **Tip-twist values are magnitudes |u|, not u_z, and there is no mean.** The tip section rotates
-  about x, so the centre-line nodes off the web mid-plane (z = ±1.4, ±2.8 mm) also move in y
+  about x, so the flange mid-plane centre nodes off the web mid-plane (z = ±1.4, ±2.8 mm) also move in y
   (u_y = ∓0.74 mm at z = ±2.8), which raises their |u|. At the centre node z = 0, u_x and u_y are
   below 10⁻⁷ mm, so |u| = |u_z| = 26.5463 mm there. φ from those two nodes is 0.0005 % above the
   Python tool's φ, which uses the mean u_z over the five nodes (the off-centre nodes have u_z =

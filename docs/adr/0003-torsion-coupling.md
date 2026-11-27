@@ -12,7 +12,7 @@ The IPE 200 torsion benchmark (#23) applies a torque at the tip of the solid I-b
 
 - **Load introduction.** The torque goes in through `*COUPLING, REF NODE=…, SURFACE=…` followed by `*DISTRIBUTING` with DOFs 1–6, and `*CLOAD` on DOF 4 of the reference node. The surface is a face-based `*SURFACE` of the tip element faces (S4, the +x face of each tip element), because ccx rejects a node surface for `*DISTRIBUTING` ("a nodal surface is not allowed").
 - **No reference-node measurement.** Under this coupling, as under `*DISTRIBUTING COUPLING`, ccx prints the reference node's U as 0 in the `.dat` and leaves it out of the `.frd`. The twist is measured on the beam instead: φ = (u_z,top − u_z,bottom)/h_m from the flange mid-plane centre nodes.
-- **Tip free to warp.** A distributing coupling does not stiffen the tip face, so it warps freely, which is the Vlasov boundary condition at the tip. A rigid coupling or a mean-rotation MPC tying all six DOFs would restrain warping there and change the target.
+- **Tip free to warp.** A distributing `*COUPLING` does not stiffen the tip face, so it warps freely, which is the Vlasov boundary condition at the tip. A rigid coupling or a mean-rotation MPC tying all six DOFs would restrain warping there and change the target.
 - **Zero-twist guard.** A run whose |φ(L)| is below 1 % of the St-Venant tip twist stops with an error and writes no report. A test runs the `*DISTRIBUTING COUPLING` variant under real ccx and expects the guard to trip, so a regression to that card cannot pass quietly.
 
 ## Considered options
