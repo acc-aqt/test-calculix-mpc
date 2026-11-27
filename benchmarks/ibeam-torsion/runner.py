@@ -22,13 +22,11 @@ from deck import (
     Deck,
     generate_deck,
 )
-from frd import FrdResults, NodalValues, read_frd
+from frd import SXX, SZX, FrdResults, NodalValues, read_frd
 
 JOB_NAME = "ibeam"
 ZERO_TWIST_FRACTION = 0.01
 """A tip twist below this fraction of the St-Venant tip twist means the torque never arrived."""
-_SXX, _SZX = 0, 5
-"""Positions in a .frd STRESS record (sxx, syy, szz, sxy, syz, szx)."""
 
 
 class CcxError(RuntimeError):
@@ -170,11 +168,11 @@ def benchmark_result(
         node_count=deck.node_count,
         twist_curve=_twist_curve(frd, deck, analytical.flange_mid_plane_distance),
         flange_tip_warping_stresses=tuple(
-            _mean_component(stresses, deck.node_sets[name], _SXX) for name in FLANGE_TIP_EDGES
+            _mean_component(stresses, deck.node_sets[name], SXX) for name in FLANGE_TIP_EDGES
         ),
         midspan_st_venant_shear_stress=(
-            _mean_component(stresses, top_surface, _SZX)
-            - _mean_component(stresses, bottom_surface, _SZX)
+            _mean_component(stresses, top_surface, SZX)
+            - _mean_component(stresses, bottom_surface, SZX)
         )
         / 2,
         root_peak_von_mises=float(max(von_mises(stresses[n]) for n in deck.node_sets[ROOT_FACE])),

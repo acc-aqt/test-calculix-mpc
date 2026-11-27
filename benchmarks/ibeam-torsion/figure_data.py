@@ -6,11 +6,10 @@ import numpy as np
 
 from benchmark_parameters import MeshLevel
 from deck import QUARTER_SPAN_FLANGES, TOP_FLANGE_TIP_LINE, Deck
-from frd import FrdResults
+from frd import SXX, FrdResults
 from runner import BenchmarkResult
 
 X, Y, Z = 0, 1, 2
-_SXX = 0
 
 
 @dataclass(frozen=True)
@@ -87,6 +86,6 @@ def _mean_sxx_by(
 ) -> tuple[np.ndarray, np.ndarray]:
     """The distinct positions of the nodes on the axis and their mean σ_xx at each."""
     positions = np.array([frd.nodes[n][axis] for n in nodes])
-    sxx = np.array([frd.nodal_results["STRESS"][n][_SXX] for n in nodes])
+    sxx = np.array([frd.nodal_results["STRESS"][n][SXX] for n in nodes])
     unique, group = np.unique(positions, return_inverse=True)
     return unique, np.bincount(group, weights=sxx) / np.bincount(group)
