@@ -1,6 +1,8 @@
+import pytest
+
 from analytical import analytical_solution
-from benchmark_parameters import COARSE, IPE200_TORSION
-from report import render_report
+from benchmark_parameters import COARSE, FINE, IPE200_TORSION, MEDIUM
+from report import Verdict, render_report, verdict
 from runner import BenchmarkResult
 
 VLASOV_TIP_TWIST = 0.26275
@@ -25,6 +27,47 @@ def result(level, tip_ratio=1.0, stress_ratios=(1.0, 1.0, 1.0, 1.0), shear=69.1,
         root_peak_von_mises=root_peak,
         analytical=analytical_solution(IPE200_TORSION),
     )
+
+
+def test_fine_level_within_the_tolerances_passes():
+    assert verdict([result(FINE, 1.0799, (1.0499, 0.9501, 1.0499, 0.9501))]) is Verdict.PASS
+
+
+@pytest.mark.parametrize("tip_ratio", [1.0801, 0.9199])
+def test_fine_tip_twist_off_by_more_than_eight_percent_fails(tip_ratio):
+    assert verdict([result(FINE, tip_ratio)]) is Verdict.FAIL
+
+
+@pytest.mark.parametrize("tip", range(4))
+@pytest.mark.parametrize("ratio", [1.0501, 0.9499])
+def test_fine_warping_stress_off_by_more_than_five_percent_at_any_flange_tip_fails(tip, ratio):
+    ratios = [1.0, 1.0, 1.0, 1.0]
+    ratios[tip] = ratio
+    assert verdict([result(FINE, stress_ratios=tuple(ratios))]) is Verdict.FAIL
+
+
+@pytest.mark.parametrize("tip", range(4))
+def test_a_flipped_flange_tip_sign_fails(tip):
+    ratios = [1.0, 1.0, 1.0, 1.0]
+    ratios[tip] = -1.0
+    flipped = result(FINE, stress_ratios=tuple(ratios))
+    assert flipped.warping_stress_errors[tip] == pytest.approx(-200)
+    assert verdict([flipped]) is Verdict.FAIL
+
+
+def test_only_the_fine_level_decides_the_verdict():
+    far_off = result(COARSE, tip_ratio=1.5, stress_ratios=(0.5, -1.0, 1.0, 1.0))
+    assert verdict([far_off, result(MEDIUM, 0.5), result(FINE)]) is Verdict.PASS
+    assert verdict([result(COARSE), result(MEDIUM), result(FINE, 1.2)]) is Verdict.FAIL
+
+
+def test_information_values_never_count():
+    assert verdict([result(FINE, shear=1e6, root_peak=1e6)]) is Verdict.PASS
+    assert verdict([result(FINE, shear=-1.0, root_peak=0.0)]) is Verdict.PASS
+
+
+def test_no_fine_level_gives_no_verdict():
+    assert verdict([result(COARSE), result(MEDIUM)]) is None
 
 
 def test_report_states_solver_version_and_that_the_verdict_is_not_evaluated():
