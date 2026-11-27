@@ -103,23 +103,15 @@ def test_bare_ccx_name_is_looked_up_on_path(tmp_path, monkeypatch, capsys):
 
 
 def test_ccx_failure_stops_without_writing_a_report(tmp_path, capsys):
-    failing_ccx = tmp_path / "ccx"
-    failing_ccx.write_text("#!/bin/sh\necho ' *ERROR in calinput: something broke'\nexit 201\n")
-    failing_ccx.chmod(0o755)
-    report = tmp_path / "REPORT.md"
+    ccx = fake_ccx(tmp_path, "echo ' *ERROR in calinput: something broke'; exit 201")
 
-    code = main(
-        [
-            "--levels", "coarse",
-            "--report", str(report),
-            "--work-dir", str(tmp_path / "work"),
-            "--ccx", str(failing_ccx),
-        ]
-    )  # fmt: skip
+    code, report = run_coarse(tmp_path, ccx)
 
     assert code == 2
     assert not report.exists()
-    assert "something broke" in capsys.readouterr().err
+    err = capsys.readouterr().err
+    assert "*ERROR in calinput: something broke" in err
+    assert "exit code 201" in err
 
 
 def test_missing_ccx_stops_without_writing_a_report(tmp_path, capsys):
