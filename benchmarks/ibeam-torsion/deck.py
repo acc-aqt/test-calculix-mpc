@@ -27,6 +27,12 @@ FLANGE_TIP_EDGES = ("TIPTOPNZ", "TIPTOPPZ", "TIPBOTNZ", "TIPBOTPZ")
 MIDSPAN_FLANGE_SURFACES = ("MIDTOPSURF", "MIDBOTSURF")
 """The top and bottom flange outer surface nodes at x = L/2 at the centres of the two flange
 outstands, z = ±(b/2 + t_w/2)/2, away from the web."""
+QUARTER_SPAN_FLANGES = ("QTOPFLANGE", "QBOTFLANGE")
+"""Every node of the top and of the bottom flange at x = L/4, across the width and through
+the thickness, for the figures."""
+TOP_FLANGE_TIP_LINE = "TOPNZLINE"
+"""The top flange-tip edge at z = −b/2 along the whole length, through the flange thickness,
+for the figures."""
 ALL_ELEMENTS = "EALL"
 TIP_FACE_LABEL = "S4"
 """The C3D20 face through local nodes 2, 6, 7 and 3, which is the element's +x face."""
@@ -79,6 +85,9 @@ def generate_deck(params: BenchmarkParameters, level: MeshLevel) -> Deck:
     def flange_tip_edge(in_flange: Callable[[int], bool], k_edge: int) -> tuple[int, ...]:
         return mesh.nodes_where(lambda i, j, k: i == quarter_span and in_flange(j) and k == k_edge)
 
+    def quarter_span_flange(in_flange: Callable[[int], bool]) -> tuple[int, ...]:
+        return mesh.nodes_where(lambda i, j, k: i == quarter_span and in_flange(j))
+
     def midspan_surface(j_surface: int) -> tuple[int, ...]:
         return mesh.nodes_where(
             lambda i, j, k: i == tip // 2 and j == j_surface and k in outstand_centres
@@ -96,6 +105,11 @@ def generate_deck(params: BenchmarkParameters, level: MeshLevel) -> Deck:
         ),
         MIDSPAN_FLANGE_SURFACES[0]: midspan_surface(top_surface),
         MIDSPAN_FLANGE_SURFACES[1]: midspan_surface(0),
+        QUARTER_SPAN_FLANGES[0]: quarter_span_flange(in_top_flange),
+        QUARTER_SPAN_FLANGES[1]: quarter_span_flange(in_bottom_flange),
+        TOP_FLANGE_TIP_LINE: mesh.nodes_where(
+            lambda i, j, k: in_top_flange(j) and k == flange_edges[0]
+        ),
     }
     tip_edges = [
         flange_tip_edge(in_flange, k_edge)
