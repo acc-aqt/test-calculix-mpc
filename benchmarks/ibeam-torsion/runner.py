@@ -14,11 +14,11 @@ import numpy as np
 from analytical import AnalyticalSolution, analytical_solution
 from benchmark_parameters import BenchmarkParameters, MeshLevel
 from deck import (
-    BOTTOM_FLANGE_CENTRE_LINE,
+    BOTTOM_FLANGE_MID_PLANE_CENTRE_NODES,
     FLANGE_TIP_EDGES,
     MIDSPAN_FLANGE_SURFACES,
     ROOT_FACE,
-    TOP_FLANGE_CENTRE_LINE,
+    TOP_FLANGE_MID_PLANE_CENTRE_NODES,
     Deck,
     generate_deck,
 )
@@ -193,8 +193,8 @@ def benchmark_result(
 def _twist_curve(
     frd: FrdResults, deck: Deck, mid_plane_distance: float
 ) -> tuple[tuple[float, float], ...]:
-    top = _mean_uz_by_x(frd, deck.node_sets[TOP_FLANGE_CENTRE_LINE])
-    bottom = _mean_uz_by_x(frd, deck.node_sets[BOTTOM_FLANGE_CENTRE_LINE])
+    top = _mean_uz_by_x(frd, deck.node_sets[TOP_FLANGE_MID_PLANE_CENTRE_NODES])
+    bottom = _mean_uz_by_x(frd, deck.node_sets[BOTTOM_FLANGE_MID_PLANE_CENTRE_NODES])
     stations = sorted(top.keys() & bottom.keys())
     return tuple((x, (top[x] - bottom[x]) / mid_plane_distance) for x in stations)
 
