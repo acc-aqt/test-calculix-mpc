@@ -38,3 +38,22 @@ IPE200_CANTILEVER = BenchmarkParameters(
     material=Material(youngs_modulus=210_000.0, poissons_ratio=0.3),
     tip_load=10_000.0,
 )
+
+
+@dataclass(frozen=True)
+class MeshLevel:
+    """Element counts through the flange thickness, along the web height and along the length.
+
+    The web thickness gets as many elements as the flange thickness, and each flange outstand
+    twice as many.
+    """
+
+    name: str
+    flange_thickness_divisions: int
+    web_height_divisions: int
+    length_divisions: int
+
+
+COARSE = MeshLevel(
+    "coarse", flange_thickness_divisions=1, web_height_divisions=4, length_divisions=30
+)
