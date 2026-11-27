@@ -1,7 +1,7 @@
 """Run the benchmark at the selected mesh levels and write the markdown report.
 
-Exit codes: 0 report written (the verdict is not evaluated yet), 2 ccx missing or failed, or
-a sanity guard tripped (no report is written).
+Exit codes: 0 PASS (or no verdict because not all three mesh levels were run), 1 FAIL,
+2 ccx missing or failed, or a sanity guard tripped (no report is written).
 """
 
 import argparse
@@ -11,7 +11,7 @@ from pathlib import Path
 
 from benchmark_parameters import LE10, MESH_LEVELS
 from deck import ELEMENT_TYPES
-from report import VERDICT_TEXT, render_report
+from report import Verdict, render_report, verdict, verdict_text
 from runner import CcxError, ccx_version, find_ccx, run_benchmark
 
 HERE = Path(__file__).resolve().parent
@@ -39,9 +39,10 @@ def main(argv: list[str] | None = None) -> int:
         print(f"{error}\nStopped; no report written.", file=sys.stderr)
         return 2
 
+    evaluated = verdict(results)
     args.report.write_text(render_report(results, LE10, version))
-    print(f"Report written to {args.report}\nVerdict: {VERDICT_TEXT}")
-    return 0
+    print(f"Report written to {args.report}\nVerdict: {verdict_text(evaluated)}")
+    return 1 if evaluated is Verdict.FAIL else 0
 
 
 def _given_ccx(given: str) -> Path:
