@@ -1,10 +1,9 @@
-from dataclasses import replace
-
 import pytest
+from dcoup_variant import distributing_coupling_variant
 
 from benchmark_parameters import COARSE, IPE200_TORSION, MeshLevel
 from dat import read_printed_displacements
-from deck import REFERENCE_NODE, TIP_FACE, TIP_SURFACE, generate_deck
+from deck import REFERENCE_NODE, generate_deck
 from frd import read_frd
 from runner import (
     CcxError,
@@ -66,22 +65,10 @@ def test_midspan_twist_is_within_three_percent_of_vlasov(coarse):
 @needs_ccx
 def test_distributing_coupling_drops_the_torque_and_trips_the_zero_twist_guard(tmp_path):
     deck = generate_deck(IPE200_TORSION, COARSE)
-    variant = replace(deck, text=_distributing_coupling_variant(deck.text, deck.node_count))
+    variant = distributing_coupling_variant(deck)
     frd = run_ccx(variant.text, tmp_path / "dcoup", CCX)
     with pytest.raises(ZeroTwistError, match="zero-twist guard"):
         benchmark_result(COARSE, IPE200_TORSION, variant, read_frd(frd))
-
-
-def _distributing_coupling_variant(text: str, reference_node: int) -> str:
-    """The deck with the *COUPLING/*DISTRIBUTING tip replaced by a DCOUP3D element and
-    *DISTRIBUTING COUPLING over the tip-face nodes, the moment still on DOF 4."""
-    start = text.index(f"*SURFACE, NAME={TIP_SURFACE}")
-    end = text.index("*STEP")
-    dcoup = (
-        f"*ELEMENT, TYPE=DCOUP3D, ELSET=ECOUP\n{reference_node + 1000000}, {reference_node}\n"
-        f"*DISTRIBUTING COUPLING, ELSET=ECOUP\n{TIP_FACE}, 1.0\n"
-    )
-    return text[:start] + dcoup + text[end:]
 
 
 @needs_ccx
