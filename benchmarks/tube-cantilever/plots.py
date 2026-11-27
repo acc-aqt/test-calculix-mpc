@@ -64,7 +64,7 @@ STYLE = {
 
 def main(argv: list[str] | None = None) -> int:
     args = _parse_args(argv)
-    levels = [LEVELS_BY_NAME[name] for name in args.levels]
+    levels = [level for level in MESH_LEVELS if level.name in args.levels]
     missing = [
         path
         for level in levels

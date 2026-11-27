@@ -1,6 +1,6 @@
 import pytest
 
-from benchmark_parameters import CHS168_CANTILEVER, COARSE
+from benchmark_parameters import CHS168_CANTILEVER, COARSE, MESH_LEVELS
 from runner import find_ccx, run_benchmark
 
 pytest.importorskip("matplotlib")
@@ -31,6 +31,22 @@ def test_coarse_work_dir_gives_the_figures_and_the_figures_page(tmp_path):
     assert "Do not edit by hand" in page
     for name in pngs:
         assert f"(figures/{name})" in page
+
+
+@needs_ccx
+def test_levels_given_out_of_order_give_the_same_figures_page_as_the_default(tmp_path):
+    work_dir = tmp_path / "work"
+    for level in MESH_LEVELS:
+        run_benchmark(level, CHS168_CANTILEVER, work_dir, CCX)
+    default, reversed_ = tmp_path / "default", tmp_path / "reversed"
+
+    assert main(["--work-dir", str(work_dir), "--output-dir", str(default)]) == 0
+    reversed_args = ["--levels", "fine", "medium", "coarse", "fine"]
+    assert main([*reversed_args, "--work-dir", str(work_dir), "--output-dir", str(reversed_)]) == 0
+
+    page = (reversed_ / "FIGURES.md").read_text()
+    assert page == (default / "FIGURES.md").read_text()
+    assert "p = " in page.split("## Figure 8.")[1]
 
 
 def test_missing_mesh_level_stops_without_writing_anything(tmp_path, capsys):
