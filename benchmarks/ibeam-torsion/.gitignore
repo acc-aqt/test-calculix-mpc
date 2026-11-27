@@ -1,0 +1,17 @@
+# Generated decks and CalculiX solver output
+*.inp
+*.frd
+*.dat
+*.sta
+*.cvg
+*.12d
+spooles.out
+
+# Working folders for solver runs
+work/
+.calculix-mcp/
+
+# Python tooling caches
+__pycache__/
+.pytest_cache/
+.ruff_cache/
