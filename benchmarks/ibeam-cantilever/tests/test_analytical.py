@@ -1,8 +1,13 @@
 from dataclasses import replace
 
+import numpy as np
 import pytest
 
-from analytical import analytical_solution
+from analytical import (
+    analytical_solution,
+    euler_bernoulli_deflection_at,
+    timoshenko_deflection_at,
+)
 from benchmark_parameters import IPE200_CANTILEVER
 
 
@@ -63,3 +68,33 @@ def test_overriding_the_length_changes_the_targets_but_not_the_section():
     assert solution.euler_bernoulli_deflection == pytest.approx(55.0433, rel=1e-5)
     assert solution.midspan_stress == pytest.approx(108.366, rel=1e-5)
     assert solution.second_moment_of_area == pytest.approx(18455902.2, rel=1e-8)
+
+
+def test_deflection_curves_are_zero_at_the_root_and_the_tip_deflections_at_the_tip():
+    solution = analytical_solution(IPE200_CANTILEVER)
+    assert euler_bernoulli_deflection_at(IPE200_CANTILEVER, 0.0) == 0.0
+    assert timoshenko_deflection_at(IPE200_CANTILEVER, 0.0) == 0.0
+    assert euler_bernoulli_deflection_at(IPE200_CANTILEVER, 3000.0) == pytest.approx(
+        solution.euler_bernoulli_deflection, rel=1e-12
+    )
+    assert timoshenko_deflection_at(IPE200_CANTILEVER, 3000.0) == pytest.approx(
+        solution.timoshenko_deflection, rel=1e-12
+    )
+
+
+def test_deflection_curves_at_midspan():
+    # x = 1500: P x^2 (3L - x) / (6 E I) = 1e4 x 2.25e6 x 7500 / 2.32544e13 = 7.25668 mm
+    #           shear term P x / (kappa G A_s) = 1.5e7 / 8.66169e7          = 0.17318 mm
+    assert euler_bernoulli_deflection_at(IPE200_CANTILEVER, 1500.0) == pytest.approx(
+        7.25668, rel=1e-5
+    )
+    assert timoshenko_deflection_at(IPE200_CANTILEVER, 1500.0) == pytest.approx(
+        7.42986, rel=1e-5
+    )
+
+
+def test_deflection_curves_accept_arrays_of_positions():
+    x = np.array([0.0, 1500.0, 3000.0])
+    assert timoshenko_deflection_at(IPE200_CANTILEVER, x) == pytest.approx(
+        [0.0, 7.42986, 23.5677], rel=1e-5
+    )

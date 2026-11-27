@@ -2,6 +2,8 @@
 
 from dataclasses import dataclass
 
+import numpy as np
+
 from benchmark_parameters import BenchmarkParameters
 
 SHEAR_COEFFICIENT = 1.0
@@ -47,3 +49,20 @@ def analytical_solution(params: BenchmarkParameters) -> AnalyticalSolution:
         timoshenko_deflection=euler_bernoulli + shear_term,
         midspan_stress=midspan_moment * outer_fibre_distance / second_moment,
     )
+
+
+Position = float | np.ndarray
+
+
+def euler_bernoulli_deflection_at(params: BenchmarkParameters, x: Position) -> Position:
+    """Downward deflection magnitude at distance x from the root: P x² (3L − x) / (6 E I)."""
+    s = analytical_solution(params)
+    bending_stiffness = params.material.youngs_modulus * s.second_moment_of_area
+    return params.tip_load * x**2 * (3 * params.length - x) / (6 * bending_stiffness)
+
+
+def timoshenko_deflection_at(params: BenchmarkParameters, x: Position) -> Position:
+    """Euler-Bernoulli deflection at x plus the shear term P x / (κ G A_s)."""
+    s = analytical_solution(params)
+    shear_stiffness = SHEAR_COEFFICIENT * s.shear_modulus * s.shear_area
+    return euler_bernoulli_deflection_at(params, x) + params.tip_load * x / shear_stiffness
