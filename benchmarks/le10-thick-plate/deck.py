@@ -87,22 +87,22 @@ def generate_deck(
 ) -> Deck:
     _check_divisions(level)
     mesh = _Mesh(params, level)
-    outer = 2 * level.across_divisions
-    y_axis = 2 * level.around_divisions
-    top = 2 * level.thickness_divisions
-    mid = level.thickness_divisions
+    outer_a = 2 * level.across_divisions
+    y_axis_t = 2 * level.around_divisions
+    top_k = 2 * level.thickness_divisions
+    mid_k = level.thickness_divisions
 
     node_sets = {
         Y0_FACE: mesh.nodes_where(lambda a, t, k: t == 0),
-        X0_FACE: mesh.nodes_where(lambda a, t, k: t == y_axis),
-        OUTER_FACE: mesh.nodes_where(lambda a, t, k: a == outer),
-        LINE_EE: mesh.nodes_where(lambda a, t, k: a == outer and k == mid),
-        POINT_D: mesh.nodes_where(lambda a, t, k: a == 0 and t == 0 and k == top),
-        HOLE_EDGE: mesh.nodes_where(lambda a, t, k: a == 0 and k == top),
+        X0_FACE: mesh.nodes_where(lambda a, t, k: t == y_axis_t),
+        OUTER_FACE: mesh.nodes_where(lambda a, t, k: a == outer_a),
+        LINE_EE: mesh.nodes_where(lambda a, t, k: a == outer_a and k == mid_k),
+        POINT_D: mesh.nodes_where(lambda a, t, k: a == 0 and t == 0 and k == top_k),
+        HOLE_EDGE: mesh.nodes_where(lambda a, t, k: a == 0 and k == top_k),
         THICKNESS_LINE_AT_D: mesh.nodes_where(lambda a, t, k: a == 0 and t == 0),
     }
-    top_elements = mesh.elements_where(lambda a, t, k: k == top - 2)
-    element_at_d = mesh.elements_where(lambda a, t, k: a == 0 and t == 0 and k == top - 2)
+    top_elements = mesh.elements_where(lambda a, t, k: k == top_k - 2)
+    element_at_d = mesh.elements_where(lambda a, t, k: a == 0 and t == 0 and k == top_k - 2)
 
     lines = ["*HEADING", f"NAFEMS LE10 thick plate, mesh level {level.name}", "*NODE, NSET=NALL"]
     lines += [f"{nid}, {x!r}, {y!r}, {z!r}" for nid, (x, y, z) in mesh.nodes.items()]
