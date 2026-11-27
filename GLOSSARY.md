@@ -116,7 +116,7 @@ The midspan outer-surface nodes at y = r_o and y = −r_o, whose single-node σ_
 _Avoid_: Top node, bottom node
 
 **Midspan stress fit**:
-The least-squares fit σ_xx = a·y through the origin over every midspan outer-surface node, giving the measured midspan stress +a·r_o at the top fibre and −a·r_o at the bottom fibre.
+The least-squares fit σ_xx = a·y + b over every midspan outer-surface node, giving the measured midspan stress a·r_o + b at the top fibre and −a·r_o + b at the bottom fibre. The intercept b lets the two fibres differ, so each is checked on its own.
 _Avoid_: Mean stress, regression stress
 
 **Observed order**:

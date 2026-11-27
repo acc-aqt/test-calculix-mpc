@@ -45,12 +45,13 @@ Mesh levels, as elements around the circumference / through the wall / along the
 
 ## Observed order
 
-For information; it does not affect the verdict. The fit gives ±a·r_o, so its order is the same at both fibres.
+For information; it does not affect the verdict.
 
 | Quantity | Observed order p |
 |---|---:|
 | Deflection vs δ_T | n/a |
-| Midspan stress fit | 2.71 |
+| Midspan stress fit, top fibre | 2.71 |
+| Midspan stress fit, bottom fibre | 2.71 |
 | Single-node stress, top fibre | 2.11 |
 | Single-node stress, bottom fibre | 2.11 |
 
@@ -62,7 +63,7 @@ For information; it does not affect the verdict. The fit gives ±a·r_o, so its 
 
 - **Tip deflection** is u_y at the reference node, read from the `.dat` file (`*NODE PRINT`), because ccx does not write the reference node to the `.frd`. The tip-face mean deflection (mean u_y of all tip-face nodes, from the `.frd`) is shown alongside as a check on the coupling; the tube has no material at its centroid, so there is no centreline node to compare with.
 - **Deflection floor.** From the medium level on, the deflection error sits at about −0.007 % against δ_T. That is a modelling residual, the difference between the clamped solid loaded through a distributing coupling and Timoshenko beam theory, at the resolution of the `.dat` print. It is not mesh error, so the deflection's observed order is not defined.
-- **Midspan stress fit** is the least-squares fit σ_xx = a·y through the origin over every outer-surface node at x = L/2 (corner and midside), using the nodal (extrapolated) σ_xx from the `.frd`. It gives +a·r_o at the top fibre and −a·r_o at the bottom fibre.
+- **Midspan stress fit** is the least-squares fit σ_xx = a·y + b over every outer-surface node at x = L/2 (corner and midside), using the nodal (extrapolated) σ_xx from the `.frd`. It gives a·r_o + b at the top fibre and −a·r_o + b at the bottom fibre, so the intercept b lets the two fibres differ and each is checked against the tolerance on its own.
 - **Single-node stresses** are the nodal σ_xx at the top-fibre (y = r_o) and bottom-fibre (y = −r_o) nodes at x = L/2, shown next to the fit for comparison.
 - **Signs.** The −y tip load gives a hogging moment along the cantilever, so the top fibre is in tension (+) and the bottom fibre in compression (−). Stress errors keep their sign, so a flipped sign shows as about −200 % and fails.
 - **Section discretisation error.** The targets use the exact annulus, while the mesh approximates the circle with quadratic arcs, so the stress error falls as the circumferential divisions grow.

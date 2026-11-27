@@ -74,8 +74,9 @@ finish the job. On exit code 2 the command prints the `*ERROR` lines and writes 
   Tip deflection is the reference node's u_y, read from the `.dat` because ccx doesn't write the
   reference node to the `.frd`. The tip-face mean deflection is listed next to it as a check on
   the coupling (the tube has no material at its centroid, so there is no centreline node).
-  The midspan stress is the midspan stress fit σ_xx = a·y over every midspan outer-surface node,
-  reported as +a·r_o and −a·r_o; the single-node σ_xx at the top-fibre and bottom-fibre nodes is
+  The midspan stress is the midspan stress fit σ_xx = a·y + b over every midspan outer-surface
+  node, reported as a·r_o + b and −a·r_o + b, so each fibre is checked on its own; the single-node
+  σ_xx at the top-fibre and bottom-fibre nodes is
   shown next to it. The root peak von Mises stress is for information only and grows as the mesh
   level gets finer.
 - **Observed order** is reported for information for the deflection, the fit and the single-node

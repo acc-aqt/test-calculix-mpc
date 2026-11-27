@@ -1,8 +1,9 @@
 import pytest
 
 from benchmark_parameters import CHS168_CANTILEVER, COARSE, MEDIUM, MeshLevel
-from deck import generate_deck
-from runner import CcxError, find_ccx, run_benchmark, run_ccx
+from deck import MIDSPAN_BOTTOM_FIBRE, MIDSPAN_OUTER_SURFACE, MIDSPAN_TOP_FIBRE, generate_deck
+from frd import FrdResults
+from runner import CcxError, benchmark_result, find_ccx, run_benchmark, run_ccx
 
 CCX = find_ccx()
 
@@ -80,6 +81,37 @@ def test_medium_deflection_matches_cowper_better_than_thin_wall_or_euler_bernoul
     assert medium.deflection_error == pytest.approx(0, abs=0.05)
     assert medium.thin_wall_deflection_error == pytest.approx(-0.30, abs=0.05)
     assert medium.euler_bernoulli_deflection_error == pytest.approx(4.71, abs=0.05)
+
+
+def test_midspan_stress_fit_measures_each_fibre_from_a_line_with_an_intercept(tmp_path):
+    # Synthetic midspan stresses sxx = 0.4 y - 2 MPa: the top fibre (y = r_o = 84.15 mm) is at
+    # +31.66 MPa and the bottom fibre at -35.66 MPa, so the two fibres differ in magnitude.
+    deck = generate_deck(CHS168_CANTILEVER, COARSE)
+    r_o = CHS168_CANTILEVER.section.outer_radius
+    (top,) = deck.node_sets[MIDSPAN_TOP_FIBRE]
+    (bottom,) = deck.node_sets[MIDSPAN_BOTTOM_FIBRE]
+    others = [n for n in deck.node_sets[MIDSPAN_OUTER_SURFACE] if n not in (top, bottom)]
+    ys = {n: r_o * (2 * i / len(others) - 1) for i, n in enumerate(others)}
+    ys |= {top: r_o, bottom: -r_o}
+    node_ids = range(1, deck.node_count + 1)
+    frd = FrdResults(
+        nodes={n: (0.0, ys.get(n, 0.0), 0.0) for n in node_ids},
+        elements={},
+        nodal_results={
+            "DISP": {n: (0.0, -1.0, 0.0) for n in node_ids},
+            "STRESS": {n: (0.4 * ys.get(n, 0.0) - 2.0, 0, 0, 0, 0, 0) for n in node_ids},
+        },
+    )
+    dat = tmp_path / "tube.dat"
+    dat.write_text(
+        " displacements (vx,vy,vz) for set REFNODE and time  0.1000000E+01\n\n"
+        f"{deck.node_count:>10}  0.000000E+00 -1.000000E+00  0.000000E+00\n"
+    )
+
+    result = benchmark_result(COARSE, CHS168_CANTILEVER, deck, frd, dat)
+
+    assert result.midspan_top_fitted_sxx == pytest.approx(31.66)
+    assert result.midspan_bottom_fitted_sxx == pytest.approx(-35.66)
 
 
 @pytest.mark.parametrize("divisions", [6, 10, 2])
