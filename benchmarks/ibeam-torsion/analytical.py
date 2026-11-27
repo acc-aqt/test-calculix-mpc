@@ -56,18 +56,19 @@ class AnalyticalSolution:
 def analytical_solution(params: BenchmarkParameters) -> AnalyticalSolution:
     s = params.section
     e = params.material.youngs_modulus
-    g, j, flange_second_moment, h_m, warping_constant, lam = _section_properties(params)
+    p = _section_properties(params)
+    g, h_m, warping_constant = p.shear_modulus, p.flange_mid_plane_distance, p.warping_constant
     omega = h_m * s.flange_width / 4
     length = params.length
     end_corrected_j = _end_corrected_torsion_constant(params)
     return AnalyticalSolution(
         shear_modulus=g,
-        torsion_constant=j,
-        flange_second_moment=flange_second_moment,
+        torsion_constant=p.torsion_constant,
+        flange_second_moment=p.flange_second_moment,
         flange_mid_plane_distance=h_m,
         warping_constant=warping_constant,
-        torsion_parameter=lam,
-        torsion_parameter_times_length=lam * length,
+        torsion_parameter=p.torsion_parameter,
+        torsion_parameter_times_length=p.torsion_parameter * length,
         flange_tip_sectorial_coordinate=omega,
         st_venant_tip_twist=float(st_venant_twist_at(params, length)),
         tip_twist=float(twist_at(params, length)),
@@ -173,17 +174,25 @@ def _curve_constants(
     params: BenchmarkParameters, torsion_constant: float | None = None
 ) -> tuple[float, float, float]:
     """T/(GJ), λ and L, with the thin-walled J unless another torsion constant is given."""
-    g, j, _, _, warping_constant, lam = _section_properties(params)
+    p = _section_properties(params)
+    g, j, lam = p.shear_modulus, p.torsion_constant, p.torsion_parameter
     if torsion_constant is not None:
         j = torsion_constant
-        lam = float(np.sqrt(g * j / (params.material.youngs_modulus * warping_constant)))
+        lam = float(np.sqrt(g * j / (params.material.youngs_modulus * p.warping_constant)))
     return params.torque / (g * j), lam, params.length
 
 
-def _section_properties(
-    params: BenchmarkParameters,
-) -> tuple[float, float, float, float, float, float]:
-    """G, J, I_f, h_m, I_w and λ."""
+@dataclass(frozen=True)
+class _SectionProperties:
+    shear_modulus: float
+    torsion_constant: float
+    flange_second_moment: float
+    flange_mid_plane_distance: float
+    warping_constant: float
+    torsion_parameter: float
+
+
+def _section_properties(params: BenchmarkParameters) -> _SectionProperties:
     s = params.section
     e = params.material.youngs_modulus
     g = e / (2 * (1 + params.material.poissons_ratio))
@@ -192,5 +201,11 @@ def _section_properties(
     flange_second_moment = s.flange_thickness * s.flange_width**3 / 12
     h_m = s.height - s.flange_thickness
     warping_constant = flange_second_moment * h_m**2 / 2
-    lam = float(np.sqrt(g * j / (e * warping_constant)))
-    return g, j, flange_second_moment, h_m, warping_constant, lam
+    return _SectionProperties(
+        shear_modulus=g,
+        torsion_constant=j,
+        flange_second_moment=flange_second_moment,
+        flange_mid_plane_distance=h_m,
+        warping_constant=warping_constant,
+        torsion_parameter=float(np.sqrt(g * j / (e * warping_constant))),
+    )
