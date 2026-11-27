@@ -5,6 +5,7 @@ from benchmark_parameters import COARSE, IPE200_TORSION, MeshLevel
 from dat import read_printed_displacements
 from deck import REFERENCE_NODE, generate_deck
 from frd import read_frd
+from report import TIP_TWIST_TOLERANCE_PERCENT
 from runner import (
     CcxError,
     ZeroTwistError,
@@ -32,12 +33,14 @@ def coarse(tmp_path_factory):
 
 
 @needs_ccx
-def test_coarse_tip_twists_positively_close_to_vlasov(coarse):
-    # Prototype: phi(L) = 0.27599 rad, +5.04 % against Vlasov. The tip sits in the
-    # load-introduction zone, where the measured twist runs about 2 % ahead of midspan's gap.
+def test_coarse_tip_twists_positively_within_the_tolerance_of_vlasov(coarse):
+    # Prototype: phi(L) = 0.27599 rad, +5.04 % against Vlasov. The FE beam is softer than the
+    # thin-walled J says (see ADR 0003).
     assert coarse.tip_twist > 0
-    assert coarse.tip_twist == pytest.approx(0.27599, rel=1e-3)
-    assert coarse.tip_twist_error == pytest.approx(5.04, abs=0.1)
+    assert coarse.tip_twist == pytest.approx(
+        VLASOV_TIP_TWIST, rel=TIP_TWIST_TOLERANCE_PERCENT / 100
+    )
+    assert abs(coarse.tip_twist_error) <= TIP_TWIST_TOLERANCE_PERCENT
 
 
 @needs_ccx

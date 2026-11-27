@@ -7,6 +7,10 @@ from benchmark_parameters import BenchmarkParameters
 from runner import ZERO_TWIST_FRACTION, BenchmarkResult
 
 VERDICT_TEXT = "not evaluated (the verdict rule is not implemented yet)"
+TIP_TWIST_TOLERANCE_PERCENT = 8.0
+"""Allowed |error| of φ(L) against the thin-walled Vlasov target. Wider than the stress
+tolerance because the thin-walled J overestimates the solid section's torsion constant."""
+WARPING_STRESS_TOLERANCE_PERCENT = 5.0
 
 
 def render_report(
@@ -78,8 +82,7 @@ def _targets_section(a: AnalyticalSolution) -> list[str]:
         f"| ω = h_m·b/4 at the flange tips | {a.flange_tip_sectorial_coordinate:g} mm² |",
         f"| φ_SV(L) = TL/(GJ) (information) | {a.st_venant_tip_twist:.5f} rad |",
         f"| φ(L), Vlasov (target) | {a.tip_twist:.5f} rad |",
-        "| J, end-corrected (information) | "
-        f"{a.end_corrected_torsion_constant:.1f} mm⁴ |",
+        f"| J, end-corrected (information) | {a.end_corrected_torsion_constant:.1f} mm⁴ |",
         "| φ(L), Vlasov with end-corrected J (information) | "
         f"{a.end_corrected_tip_twist:.5f} rad |",
         f"| σ_w = E·ω·φ''(L/4) at the flange tips (target) | "
