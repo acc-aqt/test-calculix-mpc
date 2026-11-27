@@ -55,6 +55,52 @@ code 5 ("no tests collected").
 
 `<jobname>` is the deck name without `.inp`. Output files are written to the current directory.
 
+## CalculiX MCP server
+
+The [calculix-mcp-rs](https://github.com/carlomontec/calculix-mcp-rs) server gives Claude Code
+tools to inspect decks, run `ccx` and query `.frd` results. Build it outside this repository and
+register it at local scope, so no machine-specific paths are committed.
+
+1. Install a Rust toolchain:
+
+   ```sh
+   brew install rustup
+   export PATH="$(brew --prefix rustup)/bin:$PATH"
+   rustup default stable
+   ```
+
+   Homebrew's `rustup` is keg-only, so add its `bin` folder to `PATH` yourself.
+
+2. Clone and build the server in a folder outside this repository:
+
+   ```sh
+   git clone https://github.com/carlomontec/calculix-mcp-rs.git <clone dir>
+   cd <clone dir>
+   cargo build --release -p calculix-mcp
+   <clone dir>/target/release/calculix-mcp --help
+   ```
+
+   `--help` lists `--root`, `--allow`, `--ccx`, `--env-passthrough`, `--max-run-gb` and `--cgx`.
+
+3. Register it from the repository root (local scope is the default and is private to you):
+
+   ```sh
+   claude mcp add --scope local calculix -- <clone dir>/target/release/calculix-mcp \
+     --root <repo dir>/benchmarks/ibeam-cantilever \
+     --ccx ccx="$HOME/micromamba/envs/calculix-bench/bin/ccx"
+   claude mcp list
+   ```
+
+   All paths must be absolute. `claude mcp list` shows `calculix` as connected. `--root` pins the
+   server's models folder to this benchmark folder. `--env-passthrough` isn't needed: the server
+   clears the solver's environment, and `ccx` runs without one (see Caveats).
+
+4. Restart Claude Code. A running session doesn't pick up a newly registered server, so the
+   tools are only available in a new session.
+
+The server runs each solve on a copy of the deck in `.calculix-mcp/runs/<job id>/` inside this
+folder, which is ignored by git. It never deletes those folders.
+
 ## Caveats
 
 - **Root prefix.** Set `MAMBA_ROOT_PREFIX` (or use `-p <env path>`) for every micromamba call. If
@@ -75,4 +121,5 @@ code 5 ("no tests collected").
 ## Repository layout
 
 Generated decks and solver output (`*.inp`, `*.frd`, `*.dat`, `*.sta`, `*.cvg`, `*.12d`,
-`spooles.out`) and the `work/` folder for solver runs are ignored by git (see `.gitignore`).
+`spooles.out`), the `work/` folder for solver runs and the MCP server's `.calculix-mcp/` folder
+are ignored by git (see `.gitignore`).
