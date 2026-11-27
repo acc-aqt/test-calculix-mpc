@@ -1,5 +1,5 @@
 import pytest
-from records import result
+from records import flange_tip_stress_curve, result
 
 from benchmark_parameters import COARSE, FINE, IPE200_TORSION, MEDIUM
 from report import Verdict, render_report, verdict
@@ -114,7 +114,15 @@ def test_report_links_to_the_figures_page():
 
 
 def test_report_states_the_reach_of_the_tip_disturbance_and_links_the_follow_up():
-    text = render_report([result(COARSE)], IPE200_TORSION, "Version 2.24")
-    assert "x ≈ 1200 mm" in text
+    # The finest level run sets the numbers: its curve is 5 % above the end-corrected Vlasov
+    # curve from x = 1500 mm on, falls from 16 to 11 MPa over x = 2000 to 2800 mm and is 1 %
+    # below the end-corrected curve at L/4.
+    curve = flange_tip_stress_curve(onset=1500.0, plateau=(16.0, 11.0), quarter_ratio=0.99)
+    results = [result(COARSE), result(FINE, flange_tip_curve=curve)]
+    text = render_report(results, IPE200_TORSION, "Version 2.24")
+    assert "x ≈ 1500 mm" in text
+    assert "11–16 MPa" in text
+    assert "on the fine level more than 2 %" in text
+    assert "the fine level is -1.00 % from the end-corrected curve" in text
     assert "does not reach x = L/4" not in text
     assert "issues/29" in text

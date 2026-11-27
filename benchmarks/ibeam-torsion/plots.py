@@ -22,7 +22,7 @@ from frd import read_frd
 from palette import AXIS, BAND, BLUE, DARK_BLUE, GRID, INK, LIGHT_BLUE, ORANGE, SECONDARY_INK
 from renders import stress_figure
 from report import FOLLOW_UP, TIP_TWIST_TOLERANCE_PERCENT, WARPING_STRESS_TOLERANCE_PERCENT
-from runner import benchmark_result, result_files
+from runner import ONSET_MARGIN, PLATEAU_RANGE, benchmark_result, result_files, tip_zone
 
 HERE = Path(__file__).resolve().parent
 LEVELS_BY_NAME = {level.name: level for level in MESH_LEVELS}
@@ -263,15 +263,8 @@ def flange_tip_stress_figure(
     roots = " → ".join(f"{level.series.flange_tip_sxx[0]:.1f}" for level in levels)
     names = " → ".join(level.result.mesh_level.name for level in levels)
     fine = levels[-1].series
-    plateau = (fine.flange_tip_x >= 2000) & (fine.flange_tip_x <= 2800)
-    plateau_values = fine.flange_tip_sxx[plateau]
     station_2500 = np.isclose(fine.flange_tip_x, 2500.0)
-    beyond_quarter = (fine.flange_tip_x > length / 4) & (fine.flange_tip_x < length)
-    corrected_at = warping_stress_at(params, fine.flange_tip_x, y, z, j_corrected)
-    above = beyond_quarter & (fine.flange_tip_sxx > 1.02 * corrected_at)
-    parting = float(fine.flange_tip_x[above].min())
-    quarter = np.isclose(fine.flange_tip_x, length / 4)
-    quarter_vs_corrected = (fine.flange_tip_sxx[quarter][0] / corrected_at[quarter][0] - 1) * 100
+    zone = tip_zone(levels[-1].result, params)
     return (
         "Nodal σ_xx along the top flange-tip edge at z = −b/2, the mean through the flange "
         "thickness at each x station, for each mesh level, against the Vlasov warping stress "
@@ -286,8 +279,8 @@ def flange_tip_stress_figure(
         "above it, as in figure 2; at x = L/4 (dashed) this is the verdict value. The dotted "
         "end-corrected curve (information) is closer.\n"
         "- **Towards the tip.** Instead of falling towards zero, the FE stress levels off at "
-        f"{plateau_values.min():.0f}–{plateau_values.max():.0f} MPa between x = 2000 and "
-        f"2800 mm, where Vlasov drops to a few MPa "
+        f"{zone.plateau_min:.0f}–{zone.plateau_max:.0f} MPa between x = "
+        f"{PLATEAU_RANGE[0]:.0f} and {PLATEAU_RANGE[1]:.0f} mm, where Vlasov drops to a few MPa "
         f"({warping_stress_at(params, 2500.0, y, z):.1f} MPa at x = 2500, FE "
         f"{fine.flange_tip_sxx[station_2500][0]:.1f}), and it returns near zero only at the "
         "tip face, which is free to warp. All three mesh levels agree, so it is not a "
@@ -297,10 +290,11 @@ def flange_tip_stress_figure(
         "it almost entirely as St-Venant shear at a free tip. In an open section that "
         "difference is not confined to a short zone but decays over a length of the order of "
         "1/λ: on the "
-        f"{levels[-1].result.mesh_level.name} level the FE stress is more than 2 % above the "
-        f"end-corrected curve from x = {parting:.0f} mm on, {length - parting:.0f} mm from the "
-        f"tip. x = L/4 is clear of it: there the FE stress is {quarter_vs_corrected:+.2f} % "
-        f"from the end-corrected curve. Follow-up: {FOLLOW_UP}."
+        f"{levels[-1].result.mesh_level.name} level the FE stress is more than "
+        f"{ONSET_MARGIN * 100:g} % above the end-corrected curve from x = {zone.onset_x:.0f} mm "
+        f"on, {length - zone.onset_x:.0f} mm from the tip. x = L/4 is clear of it: there the FE "
+        f"stress is {zone.quarter_span_vs_end_corrected:+.2f} % from the end-corrected curve. "
+        f"Follow-up: {FOLLOW_UP}."
     )
 
 
