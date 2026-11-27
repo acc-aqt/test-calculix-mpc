@@ -2,15 +2,17 @@
 out with matplotlib so titles, legends and colour bars match the 2D figures."""
 
 from collections.abc import Callable, Sequence
+from dataclasses import dataclass
 from pathlib import Path
 
 import numpy as np
 import pyvista as pv
 from matplotlib.cm import ScalarMappable
+from matplotlib.collections import PolyCollection
 from matplotlib.colors import Normalize
 from matplotlib.figure import Figure
 from matplotlib.lines import Line2D
-from matplotlib.patches import Patch
+from matplotlib.patches import Patch, Rectangle
 
 from analytical import bending_stress_at
 from benchmark_parameters import BenchmarkParameters
@@ -21,7 +23,7 @@ from deck import (
     WEB_CENTRELINE_TIP_NODE,
     generate_deck,
 )
-from figure_data import MeshLevelResults
+from figure_data import MeshLevelResults, Y, Z
 from frd import FrdResults
 from palette import BLUE, EDGES, GREEN, ORANGE, OUTLINE, RED, SECONDARY_INK, STEEL, WALL
 from runner import von_mises
@@ -93,7 +95,7 @@ def model_figure(
         _add_surface(plotter, grid)
         support(plotter)
         load(plotter)
-        plotter.add_points(midspan, color=MIDSPAN, point_size=14, render_points_as_spheres=True)
+        plotter.add_points(midspan, color=MIDSPAN, point_size=40, render_points_as_spheres=True)
         _look(plotter, (1.0, 0.9, 1.7))
 
     def root(plotter: pv.Plotter) -> None:
@@ -107,25 +109,84 @@ def model_figure(
         spokes.lines = np.hstack([[2, 0, n] for n in range(1, len(tip_face) + 1)])
         plotter.add_mesh(spokes, color=COUPLING, line_width=3)
         load(plotter)
-        plotter.add_mesh(pv.Sphere(radius=7, center=reference), color=LOAD, opacity=0.35)
-        plotter.add_mesh(pv.Sphere(radius=3.5, center=web_tip), color=WEB_TIP)
         _look(plotter, (2.6, 0.7, 1.0))
 
-    fig = Figure(figsize=(8, 6.4), layout="constrained")
-    grid_spec = fig.add_gridspec(2, 2, height_ratios=(1, 1.5))
-    whole, near_root, near_tip = (
-        fig.add_subplot(grid_spec[0, :]),
-        fig.add_subplot(grid_spec[1, 0]),
-        fig.add_subplot(grid_spec[1, 1]),
-    )
+    fig = Figure(figsize=(8, 10), layout="constrained")
+    grid_spec = fig.add_gridspec(3, 2, height_ratios=(1, 1.4, 1.6))
+    whole = fig.add_subplot(grid_spec[0, :])
+    near_root, near_tip = fig.add_subplot(grid_spec[1, 0]), fig.add_subplot(grid_spec[1, 1])
+    tip_view, midspan_view = fig.add_subplot(grid_spec[2, 0]), fig.add_subplot(grid_spec[2, 1])
     _show(whole, _render(overview), f"Solid I-beam, L = {length:g} mm")
-    _show(near_root, _render(root), "Root face fixed: u_x = u_y = u_z = 0")
+    _show(near_root, _render(root), "Root face: u_x = u_y = u_z = 0")
     _show(near_tip, _render(tip), "Tip face: distributing coupling")
+
+    tolerance = 1e-6 * length
+    _draw_section(tip_view, _section_faces(frd, length, tolerance), linewidth=0.6)
+    for z, y in tip_face[:, [Z, Y]]:
+        tip_view.plot([0.0, z], [0.0, y], color=COUPLING, linewidth=0.6, zorder=2)
+    tip_view.plot(
+        0.0,
+        0.0,
+        "o",
+        markersize=22,
+        markerfacecolor="none",
+        markeredgecolor=LOAD,
+        markeredgewidth=2,
+        zorder=3,
+    )
+    tip_view.plot(*web_tip[[Z, Y]], "o", markersize=6, color=WEB_TIP, zorder=4)
+    tip_view.annotate(
+        "reference node\n(extra node, not in\nthe mesh; tip-face\ncentroid)",
+        (0.0, 0.0),
+        xytext=(-0.02, 0.62),
+        textcoords="axes fraction",
+        ha="right",
+        color=LOAD,
+        **_callout(shrink=11),
+    )
+    tip_view.annotate(
+        "web-centreline\ntip node (mesh\nnode at the\nsame point)",
+        tuple(web_tip[[Z, Y]]),
+        xytext=(1.02, 0.38),
+        textcoords="axes fraction",
+        ha="left",
+        color=WEB_TIP,
+        **_callout(shrink=4),
+    )
+    tip_view.set_title("Tip face seen along the beam axis")
+
+    _draw_section(midspan_view, _section_faces(frd, length / 2, tolerance), linewidth=0.6)
+    midspan_view.plot(
+        midspan[:, Z], midspan[:, Y], "o", markersize=5, color=MIDSPAN, zorder=3, clip_on=False
+    )
+    for label, y, va in (
+        ("outer surface of\nthe top flange,\ny = +h/2", h / 2, "top"),
+        ("outer surface of\nthe bottom flange,\ny = −h/2", -h / 2, "bottom"),
+    ):
+        midspan_view.annotate(
+            label,
+            (0.0, y),
+            xytext=(0.1 * params.section.flange_width, 0.6 * y),
+            va=va,
+            color=MIDSPAN,
+            **_callout(shrink=4),
+        )
+    midspan_view.set_title("Section at x = L/2")
+
     fig.legend(
         handles=[
-            Patch(color=WALL, label="fixed root face"),
+            Patch(color=WALL, label="root face, fixed"),
             Line2D([], [], color=LOAD, linewidth=3, label=f"tip load P = {params.tip_load:g} N"),
-            Line2D([], [], color=LOAD, marker="o", alpha=0.6, ls="none", label="reference node"),
+            Line2D(
+                [],
+                [],
+                color=LOAD,
+                marker="o",
+                markerfacecolor="none",
+                markersize=9,
+                ls="none",
+                label="reference node",
+            ),
             Line2D([], [], color=COUPLING, label="distributing coupling"),
             Line2D([], [], color=WEB_TIP, marker="o", ls="none", label="web-centreline tip node"),
             Line2D([], [], color=MIDSPAN, marker="o", ls="none", label="midspan flange nodes"),
@@ -140,54 +201,62 @@ def model_figure(
         "The root face (x = 0, grey wall) is fixed in all three directions. The tip load "
         f"P = {params.tip_load:g} N acts in −y on the reference node at the tip-face "
         "centroid, and the distributing coupling (orange) spreads it over every tip-face node "
-        "without stiffening the face. The reference node is not in the `.frd`, so it is drawn "
-        "at its position in the deck. The web-centreline tip node lies on the tip face at the "
-        "same point, inside the reference-node marker; its deflection is compared with the "
-        "reference node's. The midspan flange nodes (green, x = L/2) cover the outer surfaces "
-        "of the top and bottom flanges, where the midspan stress is measured."
+        "without stiffening the face. Bottom left: the tip face seen along the beam axis. The "
+        "reference node (red ring) is an extra node outside the mesh; it is not in the `.frd`, "
+        "so it is drawn at its position in the deck. The web-centreline tip node (blue dot) is "
+        "the mesh node at the same point, the tip-face centroid; its deflection is compared "
+        "with the reference node's. Bottom right: the section at x = L/2 with the midspan "
+        f"flange nodes (green, {len(sets[MIDSPAN_TOP_FLANGE])} on each flange), which cover "
+        "the outer surfaces of the top and bottom flanges, where the midspan stress is "
+        "measured. They are also marked on the whole beam at the top."
     )
 
 
 def meshes_figure(
     levels: Sequence[MeshLevelResults], params: BenchmarkParameters, path: Path
 ) -> str:
-    root_length = 2 * params.section.height
-    section_crop = 0.2 * params.section.height
-    fig = Figure(figsize=(8, 2.5 * len(levels)), layout="constrained")
-    axes = fig.subplots(len(levels), 2, squeeze=False, width_ratios=(3, 2))
-    for (isometric, section), level in zip(axes, levels, strict=True):
+    s = params.section
+    root_length = 2 * s.height
+    junction = _Window(
+        z=(-0.22 * s.flange_width, 0.22 * s.flange_width), y=(s.height / 2 - 30, s.height / 2 + 2)
+    )
+    fig = Figure(figsize=(8, 2.7 * len(levels)), layout="constrained")
+    axes = fig.subplots(len(levels), 3, squeeze=False, width_ratios=(3, 1.05, 1.45))
+    for (isometric, section, close_up), level in zip(axes, levels, strict=True):
         grid = beam_grid(level.frd).linear_copy()
         near_root = _cells_where(grid, lambda x: x < root_length)
-        first_slab = _cells_where(grid, lambda x: np.isclose(x, x.min()))
-        top_of_section = _cells_where(first_slab, lambda y: y > section_crop, axis=1)
 
         def iso(plotter: pv.Plotter, mesh: pv.UnstructuredGrid = near_root) -> None:
             _add_edges(plotter, mesh)
             _look(plotter, (1.0, 0.8, 1.6))
 
-        def end_on(plotter: pv.Plotter, mesh: pv.UnstructuredGrid = top_of_section) -> None:
-            _add_edges(plotter, mesh)
-            _look(plotter, (-1.0, 0.0, 0.0))
-
         _show(
             isometric,
             _render(iso),
-            f"{level.result.mesh_level.label}: {len(level.frd.elements):,} elements, "
-            f"{len(level.frd.nodes):,} nodes",
+            f"{level.result.mesh_level.label}: {level.result.element_count:,} elements, "
+            f"{level.result.node_count:,} nodes",
         )
-        _show(section, _render(end_on, parallel=True), "cross-section, top flange and web")
+        faces = _section_faces(level.frd, 0.0, tolerance=1e-6 * params.length)
+        _draw_section(section, faces, linewidth=0.4)
+        section.set_title("cross-section")
+        junction.outline(section)
+        _draw_section(close_up, faces, linewidth=0.8)
+        junction.frame(close_up)
+        close_up.set_title("blue box enlarged")
     fig.savefig(path)
 
     names = ", ".join(level.result.mesh_level.label for level in levels)
     return (
         "The mesh levels, labelled with the element counts through the flange thickness, "
         f"along the web height and along the length ({names}). Left: the first "
-        f"{root_length:g} mm of the beam from the root face. Right: a close-up of the "
-        f"cross-section above y = {section_crop:g} mm, seen along the beam axis (the section "
-        "is symmetric about y = 0). The web thickness has as many elements as the flange thickness "
-        "and each flange outstand twice as many. All elements are 20-node C3D20R bricks; "
-        "their midside nodes are not drawn. The node counts are those in the `.frd`, without "
-        "the reference node."
+        f"{root_length:g} mm of the beam from the root face. Middle: the whole cross-section "
+        "on the root face, seen along the beam axis, with both flanges and the elements along "
+        "the web height. Right: the blue box of the middle view enlarged, where the top "
+        "flange meets the web, showing the elements through the flange thickness; the bottom "
+        "flange is the mirror image. The web thickness has as many elements as the flange "
+        "thickness and each flange outstand twice as many. All elements are 20-node C3D20R "
+        "bricks; their midside nodes are not drawn. As in REPORT.md and figure 8, the node "
+        "counts include the reference node."
     )
 
 
@@ -254,7 +323,7 @@ def stress_figure(
 
     def from_below(plotter: pv.Plotter) -> None:
         _add_field(plotter, grid, "sigma_xx", STRESS_MAP, stress_clim)
-        _look(plotter, (0.5, -0.5, 1.0))
+        plotter.view_vector((0.1, -1.0, -0.4), viewup=(0.0, 0.0, 1.0))
 
     def root(plotter: pv.Plotter) -> None:
         _add_field(plotter, near_root, "von_mises", VON_MISES_MAP, mises_clim)
@@ -266,9 +335,15 @@ def stress_figure(
     grid_spec = fig.add_gridspec(3, 1, height_ratios=(1, 1, 2))
     above, below, mises = (fig.add_subplot(grid_spec[row]) for row in range(3))
     _show(above, _render(from_above), f"σ_xx, {name} mesh, from above: top flange in tension")
-    _show(below, _render(from_below), "from below: bottom flange in compression")
+    _show(
+        below,
+        _render(from_below, parallel=True),
+        "from below: underside of the bottom flange in compression",
+    )
+    for x, label, ha in ((0.0, "root", "left"), (1.0, "tip", "right")):
+        below.text(x, -0.08, label, transform=below.transAxes, ha=ha, va="top", color=SECONDARY_INK)
     _colorbar(fig, [above, below], STRESS_MAP, stress_clim, "σ_xx (MPa)", "vertical", extend="both")
-    _show(mises, _render(root), "von Mises near the root, from the support side")
+    _show(mises, _render(root), "von Mises near the root, looking at the root face")
     _colorbar(fig, mises, VON_MISES_MAP, mises_clim, "von Mises (MPa)", "vertical")
     mises.text(
         0.0,
@@ -284,14 +359,16 @@ def stress_figure(
         f"σ_xx on the {name} mesh, seen from above and from below, with a diverging colour "
         "map centred on zero. The hogging moment puts the top flange in tension (red) and the "
         "bottom flange in compression (blue), largest at the root and falling linearly to zero "
-        f"at the tip. The colour range is ±{limit:g} MPa, just above the beam-theory root "
+        "at the tip. The view from below looks up at the underside of the bottom flange (blue), "
+        "with the root on the left; the red strip beyond it is the top flange, seen past the "
+        f"web. The colour range is ±{limit:g} MPa, just above the beam-theory root "
         f"bending stress P·L·c/I = {root_bending:.1f} MPa. Only nodes within "
         f"{beyond:.0f} mm of the root face go beyond it, up to ±{np.abs(sxx).max():.0f} MPa. "
-        f"Bottom: von Mises stress in the first {2 * params.section.height:g} mm, seen from "
-        f"the support side. The peak of {peak:.0f} MPa (blue dots) is at the outer corners of "
-        "the flanges on the root face, where the fixed face meets the free surfaces. That is "
-        "the stress singularity of a fixed face, which grows with mesh refinement (figure 8), "
-        "so the root stress is information only."
+        f"Bottom: von Mises stress in the first {2 * params.section.height:g} mm, looking at "
+        f"the root face. The peak of {peak:.0f} MPa (blue dots) is at the outer corners of "
+        "the flanges on the root face, where the root face meets the free surfaces. That is "
+        "the stress singularity of the fixed root face, which grows from the coarse to the "
+        "fine mesh level (figure 8), so the root stress is information only."
     )
 
 
@@ -402,3 +479,67 @@ def _cells_where(grid: pv.UnstructuredGrid, keep, axis: int = 0) -> pv.Unstructu
     """The cells whose centre coordinate on the axis (default x) passes keep."""
     centres = grid.cell_centers().points[:, axis]
     return grid.extract_cells(np.flatnonzero(keep(centres)))
+
+
+def _callout(shrink: float) -> dict:
+    return {
+        "arrowprops": {
+            "arrowstyle": "-",
+            "color": SECONDARY_INK,
+            "linewidth": 0.8,
+            "shrinkB": shrink,
+        }
+    }
+
+
+def _section_faces(frd: FrdResults, x: float, tolerance: float) -> list[np.ndarray]:
+    """The element faces on the plane x as (z, y) corner quads, seen along the beam axis."""
+    faces: dict[frozenset[int], list[int]] = {}
+    for element in frd.elements.values():
+        on_plane = [n for n in element[:8] if abs(frd.nodes[n][0] - x) <= tolerance]
+        if len(on_plane) == 4:
+            faces.setdefault(frozenset(on_plane), on_plane)
+    quads = []
+    for corners in faces.values():
+        zy = np.array([(frd.nodes[n][2], frd.nodes[n][1]) for n in corners])
+        centre = zy.mean(axis=0)
+        quads.append(zy[np.argsort(np.arctan2(*(zy - centre).T[::-1]))])
+    return quads
+
+
+def _draw_section(ax, faces: list[np.ndarray], linewidth: float) -> None:
+    ax.add_collection(PolyCollection(faces, facecolor=STEEL, edgecolor=EDGES, linewidth=linewidth))
+    ax.autoscale_view()
+    ax.set_aspect("equal")
+    ax.set_axis_off()
+
+
+@dataclass(frozen=True)
+class _Window:
+    """A (z, y) region of a cross-section view."""
+
+    z: tuple[float, float]
+    y: tuple[float, float]
+
+    def outline(self, ax) -> None:
+        ax.add_patch(
+            Rectangle(
+                (self.z[0], self.y[0]),
+                self.z[1] - self.z[0],
+                self.y[1] - self.y[0],
+                fill=False,
+                edgecolor=BLUE,
+                linewidth=1,
+            )
+        )
+
+    def frame(self, ax) -> None:
+        ax.set_xlim(*self.z)
+        ax.set_ylim(*self.y)
+        ax.set_axis_on()
+        ax.set_xticks([])
+        ax.set_yticks([])
+        ax.grid(False)
+        for spine in ax.spines.values():
+            spine.set_visible(True)
+            spine.set_edgecolor(BLUE)
