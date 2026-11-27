@@ -19,6 +19,7 @@ from deck import (
     MIDSPAN_FLANGE_SURFACES,
     ROOT_FACE,
     TOP_FLANGE_MID_PLANE_CENTRE_NODES,
+    TOP_FLANGE_TIP_LINE,
     Deck,
     generate_deck,
 )
@@ -27,6 +28,8 @@ from frd import SXX, SZX, FrdResults, NodalValues, read_frd
 JOB_NAME = "ibeam"
 ZERO_TWIST_FRACTION = 0.01
 """A tip twist below this fraction of the St-Venant tip twist means the torque never arrived."""
+_UZ = 2
+"""Position of u_z in a .frd DISP record."""
 
 
 class CcxError(RuntimeError):
@@ -48,6 +51,9 @@ class BenchmarkResult:
     flange_tip_warping_stresses: tuple[float, float, float, float]
     """Signed mean nodal σ_xx over each flange-tip edge at x = L/4, through the flange thickness:
     top flange at z = −b/2 and +b/2, then bottom flange at z = −b/2 and +b/2."""
+    flange_tip_stress_curve: tuple[tuple[float, float], ...]
+    """(x, σ_xx) along the top flange-tip edge at z = −b/2, the mean nodal σ_xx through the
+    flange thickness at each x station, root to tip."""
     midspan_st_venant_shear_stress: float
     """Mean nodal τ_xz on the top flange outer surface minus that on the bottom one, halved, at
     the outstand centres at x = L/2. Information only: warping shear is mixed in."""
@@ -170,6 +176,9 @@ def benchmark_result(
         flange_tip_warping_stresses=tuple(
             _mean_component(stresses, deck.node_sets[name], SXX) for name in FLANGE_TIP_EDGES
         ),
+        flange_tip_stress_curve=tuple(
+            sorted(_mean_by_x(frd, deck.node_sets[TOP_FLANGE_TIP_LINE], "STRESS", SXX).items())
+        ),
         midspan_st_venant_shear_stress=(
             _mean_component(stresses, top_surface, SZX)
             - _mean_component(stresses, bottom_surface, SZX)
@@ -191,18 +200,21 @@ def benchmark_result(
 def _twist_curve(
     frd: FrdResults, deck: Deck, mid_plane_distance: float
 ) -> tuple[tuple[float, float], ...]:
-    top = _mean_uz_by_x(frd, deck.node_sets[TOP_FLANGE_MID_PLANE_CENTRE_NODES])
-    bottom = _mean_uz_by_x(frd, deck.node_sets[BOTTOM_FLANGE_MID_PLANE_CENTRE_NODES])
+    top = _mean_by_x(frd, deck.node_sets[TOP_FLANGE_MID_PLANE_CENTRE_NODES], "DISP", _UZ)
+    bottom = _mean_by_x(frd, deck.node_sets[BOTTOM_FLANGE_MID_PLANE_CENTRE_NODES], "DISP", _UZ)
     stations = sorted(top.keys() & bottom.keys())
     return tuple((x, (top[x] - bottom[x]) / mid_plane_distance) for x in stations)
 
 
-def _mean_uz_by_x(frd: FrdResults, nodes: tuple[int, ...]) -> dict[float, float]:
-    displacements = frd.nodal_results["DISP"]
+def _mean_by_x(
+    frd: FrdResults, nodes: tuple[int, ...], block: str, component: int
+) -> dict[float, float]:
+    """The mean of one component of a .frd result block over the nodes at each x station."""
+    values = frd.nodal_results[block]
     by_x: dict[float, list[float]] = defaultdict(list)
     for n in nodes:
-        by_x[frd.nodes[n][0]].append(displacements[n][2])
-    return {x: sum(uz) / len(uz) for x, uz in by_x.items()}
+        by_x[frd.nodes[n][0]].append(values[n][component])
+    return {x: sum(v) / len(v) for x, v in by_x.items()}
 
 
 def _mean_component(stresses: NodalValues, nodes: tuple[int, ...], component: int) -> float:

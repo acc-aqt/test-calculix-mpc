@@ -5,7 +5,7 @@ from dataclasses import dataclass
 import numpy as np
 
 from benchmark_parameters import MeshLevel
-from deck import QUARTER_SPAN_FLANGES, TOP_FLANGE_TIP_LINE, Deck
+from deck import QUARTER_SPAN_FLANGES, Deck
 from frd import SXX, FrdResults
 from runner import BenchmarkResult
 
@@ -57,7 +57,9 @@ def figure_series(result: BenchmarkResult, frd: FrdResults, deck: Deck) -> Figur
     top_name, bottom_name = QUARTER_SPAN_FLANGES
     top_z, top_sxx = _mean_sxx_by(frd, deck.node_sets[top_name], Z)
     bottom_z, bottom_sxx = _mean_sxx_by(frd, deck.node_sets[bottom_name], Z)
-    tip_x, tip_sxx = _mean_sxx_by(frd, deck.node_sets[TOP_FLANGE_TIP_LINE], X)
+    tip_x, tip_sxx = (
+        np.array(column) for column in zip(*result.flange_tip_stress_curve, strict=True)
+    )
     return FigureSeries(
         mesh_level=result.mesh_level,
         twist_x=twist_x,

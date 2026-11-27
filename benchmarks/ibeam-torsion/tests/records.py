@@ -22,6 +22,7 @@ def result(level, tip_ratio=1.0, stress_ratios=(1.0, 1.0, 1.0, 1.0), shear=69.1,
             sign * ratio * QUARTER_SPAN_WARPING_STRESS
             for sign, ratio in zip(FLANGE_TIP_SIGNS, stress_ratios, strict=True)
         ),
+        flange_tip_stress_curve=((0.0, 150.0), (750.0, 61.4), (3000.0, 0.0)),
         midspan_st_venant_shear_stress=shear,
         root_peak_von_mises=root_peak,
         analytical=analytical_solution(IPE200_TORSION),
