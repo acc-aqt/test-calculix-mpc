@@ -1,8 +1,18 @@
 import pytest
+from broken_variants import partial_load_variant, straight_chord_variant
 
 from benchmark_parameters import COARSE, FINE, LE10, MEDIUM
 from deck import generate_deck
-from runner import CcxError, find_ccx, run_benchmark, run_ccx
+from frd import read_frd
+from reference import quarter_annulus_volume, top_face_area
+from runner import (
+    CcxError,
+    GuardError,
+    benchmark_result,
+    find_ccx,
+    run_benchmark,
+    run_ccx,
+)
 
 CCX = find_ccx()
 
@@ -23,6 +33,18 @@ def test_coarse_sigma_yy_at_d_is_compressive_and_of_the_published_order(coarse):
     assert coarse.stress_yy_at_d < 0
     assert coarse.stress_yy_at_d == pytest.approx(-5.38, rel=0.25)
     assert coarse.stress_yy_at_d_error == pytest.approx(0.82, abs=0.01)
+
+
+@needs_ccx
+def test_coarse_reaction_on_line_ee_balances_the_pressure_on_the_top_face(coarse):
+    # Prototype: 5.448647e6 N against 1 MPa x 5 448 699.8 mm^2, -0.001 %.
+    assert coarse.reaction_z_on_ee == pytest.approx(5.4486e6, rel=1e-4)
+    assert coarse.reaction_z_on_ee == pytest.approx(LE10.pressure * top_face_area(LE10), rel=1e-3)
+
+
+@needs_ccx
+def test_coarse_mesh_volume_matches_the_exact_quarter_annulus_volume(coarse):
+    assert coarse.mesh_volume == pytest.approx(quarter_annulus_volume(LE10), rel=1e-3)
 
 
 @pytest.fixture(scope="module")
@@ -78,3 +100,24 @@ def test_broken_deck_raises_instead_of_returning_results(tmp_path):
     assert broken != deck
     with pytest.raises(CcxError, match=r"(?s)ccx failed .*ERROR"):
         run_ccx(broken, tmp_path / "broken", CCX)
+
+
+@needs_ccx
+def test_pressure_on_part_of_the_top_face_trips_the_reaction_balance_guard(tmp_path):
+    deck = generate_deck(LE10, COARSE)
+    variant = partial_load_variant(deck)
+    assert variant.text != deck.text
+    frd = run_ccx(variant.text, tmp_path / "partial", CCX)
+    with pytest.raises(GuardError, match="reaction-balance guard"):
+        benchmark_result(COARSE, LE10, variant, read_frd(frd), frd.with_suffix(".dat"))
+
+
+@needs_ccx
+def test_straight_chord_midside_nodes_on_the_curved_edges_trip_the_mesh_volume_guard(tmp_path):
+    # Straight chords cut the curved edges: the coarse mesh loses about 1 % of its volume.
+    deck = generate_deck(LE10, COARSE)
+    variant = straight_chord_variant(deck)
+    assert variant.text != deck.text
+    frd = run_ccx(variant.text, tmp_path / "chord", CCX)
+    with pytest.raises(GuardError, match="mesh-volume guard"):
+        benchmark_result(COARSE, LE10, variant, read_frd(frd), frd.with_suffix(".dat"))
