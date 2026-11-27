@@ -61,8 +61,7 @@ def _parameters_section(params: BenchmarkParameters) -> list[str]:
         f"| Load | p = {params.pressure:g} MPa on the top face (z = +{half:g} mm) |",
         "| Supports | u_y = 0 on y = 0; u_x = 0 on x = 0; u_x = u_y = 0 on the outer face; "
         "u_z = 0 on line EE′ (the outer face at z = 0) |",
-        "| Elements | C3D20R; C3D20 for information; mapped mesh, midside nodes on the "
-        "ellipses |",
+        "| Elements | C3D20R; C3D20 for information; mapped mesh, midside nodes on the ellipses |",
         f"| Top-face area (π/4)(a_o·b_o − a_i·b_i) | {top_face_area(params):.1f} mm² |",
         f"| Volume | {quarter_annulus_volume(params):.5e} mm³ |",
         "",
