@@ -15,6 +15,13 @@ def target_stress_at_d() -> float:
     return PUBLISHED_STRESS_AT_D
 
 
+def stress_at_d_error(stress_yy: float) -> float:
+    """The error of a σ_yy(D) in %, (FE − target) / target × 100, signed against the signed
+    target, so a flipped sign gives about −200 %."""
+    target = target_stress_at_d()
+    return (stress_yy - target) / target * 100
+
+
 def top_face_area(params: BenchmarkParameters) -> float:
     """The quarter annulus between the inner and outer ellipses, (π/4)(a_o·b_o − a_i·b_i)."""
     outer, inner = params.outer, params.inner

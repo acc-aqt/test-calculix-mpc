@@ -14,7 +14,7 @@ from benchmark_parameters import BenchmarkParameters, MeshLevel
 from dat import read_printed_integration_points, read_printed_total_forces
 from deck import C3D20R, LINE_EE, POINT_D, Deck, generate_deck, mesh_volume
 from frd import SYY, FrdResults, read_frd
-from reference import quarter_annulus_volume, target_stress_at_d, top_face_area
+from reference import quarter_annulus_volume, stress_at_d_error, top_face_area
 
 JOB_NAME = "le10"
 VOLUME_GUARD_TOLERANCE = 1e-4
@@ -60,8 +60,7 @@ class BenchmarkResult:
     @property
     def stress_yy_at_d_error(self) -> float:
         """Signed % error against the published σ_yy(D), so a flipped sign gives about −200 %."""
-        target = target_stress_at_d()
-        return (self.stress_yy_at_d - target) / target * 100
+        return stress_at_d_error(self.stress_yy_at_d)
 
     @property
     def von_mises_at_d(self) -> float:

@@ -6,7 +6,12 @@ from enum import Enum
 
 from benchmark_parameters import COARSE, FINE, MEDIUM, BenchmarkParameters
 from deck import C3D20, C3D20R
-from reference import quarter_annulus_volume, target_stress_at_d, top_face_area
+from reference import (
+    quarter_annulus_volume,
+    stress_at_d_error,
+    target_stress_at_d,
+    top_face_area,
+)
 from runner import REACTION_GUARD_TOLERANCE, VOLUME_GUARD_TOLERANCE, BenchmarkResult
 
 ADR = "[ADR 0004](../../docs/adr/0004-published-reference-value.md)"
@@ -203,7 +208,7 @@ def _richardson_lines(results: Sequence[BenchmarkResult]) -> list[str]:
             "| Richardson estimate (information) | not available | – |",
         ]
     else:
-        error = (estimate - target_stress_at_d()) / target_stress_at_d() * 100
+        error = stress_at_d_error(estimate)
         value = f"{estimate:.3f} MPa | {error:+.2f} %".replace("-", "−")
         lines += [
             f"| Observed order p (information) | {order:.2f} | – |",
