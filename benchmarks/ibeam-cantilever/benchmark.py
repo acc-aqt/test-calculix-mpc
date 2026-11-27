@@ -9,7 +9,7 @@ import sys
 from pathlib import Path
 
 from benchmark_parameters import IPE200_CANTILEVER, MESH_LEVELS
-from report import render_report, verdict
+from report import Verdict, render_report, verdict, verdict_text
 from runner import CcxError, ccx_version, find_ccx, run_benchmark
 
 HERE = Path(__file__).resolve().parent
@@ -38,9 +38,9 @@ def main(argv: list[str] | None = None) -> int:
         return 2
 
     args.report.write_text(render_report(results, IPE200_CANTILEVER, version))
-    outcome = verdict(results)
-    print(f"Report written to {args.report}\nVerdict: {outcome or 'not evaluated'}")
-    return 1 if outcome == "FAIL" else 0
+    evaluated = verdict(results)
+    print(f"Report written to {args.report}\nVerdict: {verdict_text(evaluated)}")
+    return 1 if evaluated is Verdict.FAIL else 0
 
 
 def _parse_args(argv: list[str] | None) -> argparse.Namespace:
