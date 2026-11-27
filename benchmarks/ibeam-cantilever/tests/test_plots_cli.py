@@ -41,3 +41,21 @@ def test_missing_mesh_level_stops_without_writing_anything(tmp_path, capsys):
     assert code != 0
     assert "benchmark.py" in capsys.readouterr().err
     assert not output_dir.exists()
+
+
+def test_one_missing_mesh_level_stops_naming_its_files_and_writes_nothing(tmp_path, capsys):
+    work_dir, output_dir = tmp_path / "work", tmp_path / "out"
+    for name in ("coarse", "medium"):
+        (work_dir / name).mkdir(parents=True)
+        for suffix in ("frd", "dat"):
+            (work_dir / name / f"ibeam.{suffix}").write_text("")
+
+    code = main(["--work-dir", str(work_dir), "--output-dir", str(output_dir)])
+
+    assert code != 0
+    err = capsys.readouterr().err
+    assert str(work_dir / "fine" / "ibeam.frd") in err
+    assert str(work_dir / "fine" / "ibeam.dat") in err
+    assert str(work_dir / "coarse") not in err
+    assert str(work_dir / "medium") not in err
+    assert not output_dir.exists()
