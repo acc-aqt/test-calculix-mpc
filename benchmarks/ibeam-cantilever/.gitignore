@@ -9,6 +9,7 @@ spooles.out
 
 # Working folders for solver runs
 work/
+.calculix-mcp/
 
 # Python tooling caches
 __pycache__/
