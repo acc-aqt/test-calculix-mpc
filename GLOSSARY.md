@@ -124,4 +124,4 @@ The convergence order p = ln((e_c − e_m)/(e_m − e_f)) / ln 2 from the signed
 _Avoid_: Convergence rate
 
 **Tube verdict**:
-PASS when the fine mesh level's deflection error and the midspan stress fit errors at both fibres are within ±1 %, and the midspan stress fit error magnitude strictly decreases coarse → medium → fine at both fibres; otherwise FAIL. There is no verdict without the fine level.
+PASS when the fine mesh level's deflection error and the midspan stress fit errors at both fibres are within ±1 %, and the midspan stress fit error magnitude strictly decreases coarse → medium → fine at both fibres; otherwise FAIL. There is no verdict unless all three mesh levels were run.

@@ -50,7 +50,8 @@ micromamba run -p "$HOME/micromamba/envs/calculix-bench" python benchmark.py
 This runs the coarse, medium and fine mesh levels (about 10 s in total, most of it the fine level)
 and writes `REPORT.md`, which is committed. Options:
 
-- `--levels coarse medium` runs only the levels you name. Without `fine` there's no verdict.
+- `--levels coarse medium` runs only the levels you name. A verdict needs all three levels, so a
+  partial run gives none.
 - `--report <path>` writes the report somewhere else.
 - `--work-dir <dir>` changes where decks and solver output go. The default is `work/<mesh
   level>/tube.inp` (and `.frd`, `.dat`, ...) in this folder, which git ignores.
