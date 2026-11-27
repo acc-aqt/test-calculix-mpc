@@ -68,9 +68,35 @@ job's `.frd` with `inp_path=work/medium/tube.inp`:
   difference is τ_xy = 0.143 MPa). A least-squares fit of σ_xx over `MIDOUTER` can't be built
   from invariants: at the neutral axis s1 is the shear stress, 4.888 MPa.
 
-**Impact here.** None on the results, but the MCP cross-checks in both benchmark READMEs can
+**Impact here.** None on the results, but the MCP cross-checks in the benchmark READMEs can
 only compare invariants and magnitudes with the Python tool's components, and each difference
-has to be explained by hand.
+has to be explained by hand. On the LE10 fine deck (#36) σ_yy at point D could be read as s3 only
+because the shear stresses vanish there.
+
+## `mesh_check` volume ignores midside nodes
+
+**Status:** not reported; a suggestion. Found during #36 (2026-11-27).
+
+**What happens.** `mesh_check` computes the volume from corner nodes only, and its note says so
+("mid-side nodes are ignored ... ~2.55% shortfall on a 16-segment C3D20 annulus"). On the LE10
+fine deck (3072 C3D20R with midside nodes on the ellipses) it gives 3 266 886 305 mm³, 0.071 %
+below the exact quarter annulus, 3 269 219 855 mm³. The same deck with every midside node moved
+to the midpoint of its edge, so the curved edges become straight chords, gives the same
+3 266 886 305 mm³ and verdict OK. ccx solves that deck as a different geometry, but
+`mesh_check` can't tell the two apart.
+
+**Expected.** The volume of a quadratic element integrated with its own shape functions
+(for C3D20, 3×3×3 Gauss points over det J of the 20-node map), so curved edges count and a
+misplaced midside node shows in the volume. The note's estimate could then go.
+
+**Repro.** `python benchmark.py --levels fine` in `benchmarks/le10-thick-plate`, then
+`mesh_check` on `work/fine/C3D20R/le10.inp`; for the chord deck, write
+`straight_chord_variant(generate_deck(LE10, FINE)).text` (from `tests/broken_variants.py`) to a
+file and run `mesh_check` on it.
+
+**Impact here.** None on the results: the benchmark's own mesh-volume guard integrates the
+midside nodes (`mesh_volume` in `deck.py`, 3 269 219 730 mm³, −4·10⁻⁶ %). The LE10 README's
+"Cross-check via MCP" section explains the MCP's shortfall.
 
 ## Deck inspection doesn't warn about a moment on a `*DISTRIBUTING COUPLING` reference node
 
