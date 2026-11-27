@@ -11,7 +11,7 @@ from pathlib import Path
 import matplotlib
 
 from benchmark_parameters import LE10, MESH_LEVELS
-from deck import generate_deck
+from deck import C3D20R, generate_deck
 from figure_data import MeshLevelResults
 from frd import read_frd
 from palette import AXIS, GRID, SECONDARY_INK
@@ -56,7 +56,7 @@ caption."""
 def main(argv: list[str] | None = None) -> int:
     args = _parse_args(argv)
     levels = [level for level in MESH_LEVELS if level.name in args.levels]
-    files = [result_files(level, args.work_dir) for level in levels]
+    files = [result_files(level, args.work_dir, C3D20R) for level in levels]
     missing = [path for paths in files for path in paths if not path.is_file()]
     if missing:
         listed = "\n".join(f"  {path}" for path in missing)
@@ -71,8 +71,8 @@ def main(argv: list[str] | None = None) -> int:
     for level, (frd_path, dat_path) in zip(levels, files, strict=True):
         print(f"Reading mesh level {level.name} ...", flush=True)
         frd = read_frd(frd_path)
-        deck = generate_deck(params, level)
-        result = benchmark_result(level, deck, frd, dat_path)
+        deck = generate_deck(params, level, C3D20R)
+        result = benchmark_result(level, C3D20R, params, deck, frd, dat_path)
         results.append(MeshLevelResults(result, deck, frd))
 
     figures_dir = args.output_dir / "figures"

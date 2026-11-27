@@ -48,17 +48,17 @@ def test_missing_mesh_levels_stop_without_writing_anything(tmp_path, capsys):
 def test_one_missing_result_file_stops_naming_it_and_writes_nothing(tmp_path, capsys):
     work_dir, output_dir = tmp_path / "work", tmp_path / "out"
     for name in ("coarse", "medium", "fine"):
-        (work_dir / name).mkdir(parents=True)
-        (work_dir / name / "le10.frd").write_text("")
-        (work_dir / name / "le10.dat").write_text("")
-    (work_dir / "medium" / "le10.dat").unlink()
+        (work_dir / name / "C3D20R").mkdir(parents=True)
+        (work_dir / name / "C3D20R" / "le10.frd").write_text("")
+        (work_dir / name / "C3D20R" / "le10.dat").write_text("")
+    (work_dir / "medium" / "C3D20R" / "le10.dat").unlink()
 
     code = main(["--work-dir", str(work_dir), "--output-dir", str(output_dir)])
 
     assert code != 0
     err = capsys.readouterr().err
-    assert str(work_dir / "medium" / "le10.dat") in err
-    assert str(work_dir / "medium" / "le10.frd") not in err
+    assert str(work_dir / "medium" / "C3D20R" / "le10.dat") in err
+    assert str(work_dir / "medium" / "C3D20R" / "le10.frd") not in err
     assert str(work_dir / "coarse") not in err
     assert str(work_dir / "fine") not in err
     assert not output_dir.exists()
