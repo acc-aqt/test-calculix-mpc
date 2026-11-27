@@ -109,3 +109,9 @@ def test_end_corrected_torsion_constant_for_information():
 def test_vlasov_tip_twist_with_the_end_corrected_torsion_constant_for_information():
     # lambda L = 3.6232 with J = 49255.3; T/(GJ) x (L - tanh(lambda L)/lambda) = 0.27313 rad
     assert SOLUTION.end_corrected_tip_twist == pytest.approx(0.27313, rel=1e-4)
+
+
+def test_quarter_span_warping_stress_with_the_end_corrected_torsion_constant_for_information():
+    # lambda = 1.20772e-3 /mm with J = 49255.3; E omega T/(GJ) lambda sinh(0.75 lambda L) /
+    # cosh(lambda L) = 61.37 MPa, 4.6 % above the thin-walled target
+    assert SOLUTION.end_corrected_quarter_span_warping_stress == pytest.approx(61.373, rel=1e-4)
