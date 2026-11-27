@@ -41,6 +41,7 @@ def test_coarse_work_dir_gives_every_figure_and_the_figures_page(tmp_path):
     page = (output_dir / "FIGURES.md").read_text()
     assert "Do not edit by hand" in page
     assert "](REPORT.md)" in page
+    assert "](README.md)" in page
     for number in range(1, 9):
         assert f"## Figure {number}. " in page
     for name in pngs:
