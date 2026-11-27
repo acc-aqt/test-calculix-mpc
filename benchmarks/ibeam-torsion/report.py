@@ -81,9 +81,10 @@ def render_report(
         "web): the mean on the top surface minus the mean on the bottom surface, halved, since "
         "the St-Venant shear is +G·t_f·φ' on the top outer surface and −G·t_f·φ' on the bottom "
         "one. Warping shear from the flanges' lateral bending is mixed in, but at midspan it is "
-        "small next to τ_SV. The FE twist rate at midspan is above the Vlasov φ' (see "
-        "below), and the single element through the flange thickness of the coarse level "
-        "resolves the through-thickness shear poorly.",
+        "small next to τ_SV. Most of the fine-level gap follows the FE twist rate at midspan, "
+        "which is above the Vlasov φ' for the J reason given below. The coarse level's larger "
+        "gap comes from its single element through the flange thickness, which resolves the "
+        "through-thickness shear poorly.",
         "- **Root peak von Mises** (information) is the largest nodal von Mises stress on the "
         "root face. The fixed face is singular where it meets the free surfaces, so it grows as "
         f"the mesh is refined. Thin-walled theory gives σ_w = {analytical.root_warping_stress:.2f} "
