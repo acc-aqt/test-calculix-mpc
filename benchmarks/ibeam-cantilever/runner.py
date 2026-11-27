@@ -1,5 +1,6 @@
 """Benchmark runner: deck -> ccx -> .frd -> result record for one mesh level."""
 
+import math
 import os
 import shutil
 import subprocess
@@ -10,8 +11,15 @@ from pathlib import Path
 from analytical import AnalyticalSolution, analytical_solution
 from benchmark_parameters import BenchmarkParameters, MeshLevel
 from dat import read_printed_displacements
-from deck import REFERENCE_NODE, WEB_CENTRELINE_TIP_NODE, generate_deck
-from frd import read_nodal_results
+from deck import (
+    MIDSPAN_BOTTOM_FLANGE,
+    MIDSPAN_TOP_FLANGE,
+    REFERENCE_NODE,
+    ROOT_FACE,
+    WEB_CENTRELINE_TIP_NODE,
+    generate_deck,
+)
+from frd import NodalValues, read_nodal_results
 
 JOB_NAME = "ibeam"
 
@@ -28,13 +36,31 @@ class BenchmarkResult:
     reference_node_uy: float
     """Signed tip displacement in y at the reference node (negative under the -y load)."""
     web_centreline_tip_uy: float
+    midspan_top_sxx_width_mean: float
+    """Signed nodal sigma_xx on the top flange outer surface at x = L/2, averaged across the
+    full flange width (the spec's Further Notes option, not only the web-centreline node)."""
+    midspan_bottom_sxx_width_mean: float
+    """As midspan_top_sxx_width_mean, on the bottom flange outer surface."""
+    root_peak_von_mises: float
+    """Largest nodal von Mises stress on the root face. Information only: the fixed end disturbs
+    it (St-Venant), so it never affects the verdict."""
     analytical: AnalyticalSolution
 
     @property
     def deflection_error(self) -> float:
         """% error of the reference-node tip deflection against the Timoshenko deflection."""
         target = self.analytical.timoshenko_deflection
-        return (abs(self.reference_node_uy) - target) / target * 100
+        return _percent_error(self.reference_node_uy, target)
+
+    @property
+    def midspan_top_stress_error(self) -> float:
+        """% error of |midspan_top_sxx_width_mean| against the analytical midspan stress."""
+        return _percent_error(self.midspan_top_sxx_width_mean, self.analytical.midspan_stress)
+
+    @property
+    def midspan_bottom_stress_error(self) -> float:
+        """% error of |midspan_bottom_sxx_width_mean| against the analytical midspan stress."""
+        return _percent_error(self.midspan_bottom_sxx_width_mean, self.analytical.midspan_stress)
 
 
 def find_ccx() -> Path | None:
@@ -72,7 +98,8 @@ def run_benchmark(
 ) -> BenchmarkResult:
     deck = generate_deck(params, level)
     frd = run_ccx(deck.text, work_dir / level.name, ccx)
-    displacements = read_nodal_results(frd)["DISP"]
+    results = read_nodal_results(frd)
+    displacements, stresses = results["DISP"], results["STRESS"]
     printed = read_printed_displacements(frd.with_suffix(".dat"))[REFERENCE_NODE]
     (reference,) = deck.node_sets[REFERENCE_NODE]
     (web_tip,) = deck.node_sets[WEB_CENTRELINE_TIP_NODE]
@@ -82,5 +109,22 @@ def run_benchmark(
         node_count=deck.node_count,
         reference_node_uy=printed[reference][1],
         web_centreline_tip_uy=displacements[web_tip][1],
+        midspan_top_sxx_width_mean=_mean_sxx(stresses, deck.node_sets[MIDSPAN_TOP_FLANGE]),
+        midspan_bottom_sxx_width_mean=_mean_sxx(stresses, deck.node_sets[MIDSPAN_BOTTOM_FLANGE]),
+        root_peak_von_mises=max(_von_mises(stresses[n]) for n in deck.node_sets[ROOT_FACE]),
         analytical=analytical_solution(params),
     )
+
+
+def _percent_error(value: float, target: float) -> float:
+    return (abs(value) - target) / target * 100
+
+
+def _mean_sxx(stresses: NodalValues, nodes: tuple[int, ...]) -> float:
+    return sum(stresses[n][0] for n in nodes) / len(nodes)
+
+
+def _von_mises(stress: tuple[float, ...]) -> float:
+    sxx, syy, szz, sxy, syz, szx = stress[:6]
+    normal = (sxx - syy) ** 2 + (syy - szz) ** 2 + (szz - sxx) ** 2
+    return math.sqrt(normal / 2 + 3 * (sxy**2 + syz**2 + szx**2))

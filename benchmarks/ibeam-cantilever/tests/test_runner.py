@@ -27,6 +27,26 @@ def test_coarse_reference_node_and_web_centreline_tip_agree(coarse):
     assert coarse.web_centreline_tip_uy == pytest.approx(coarse.reference_node_uy, rel=0.01)
 
 
+def test_coarse_midspan_top_flange_is_stretched_and_bottom_flange_compressed_equally(coarse):
+    # A tip load in -y gives a hogging moment along a cantilever: tension on top, compression
+    # below. (Spec #1 and ticket #6 state the opposite signs; that is a sign slip in the spec.)
+    top, bottom = coarse.midspan_top_sxx_width_mean, coarse.midspan_bottom_sxx_width_mean
+    assert bottom < 0 < top
+    assert top == pytest.approx(-bottom, rel=0.05)
+
+
+def test_coarse_midspan_stress_errors_are_within_ten_percent_of_beam_theory(coarse):
+    # P (L/2) c / I = 10000 x 1500 x 100 / 18455902.2 = 81.27 MPa; errors are on magnitudes.
+    assert coarse.midspan_top_stress_error == pytest.approx(0, abs=10)
+    assert coarse.midspan_bottom_stress_error == pytest.approx(0, abs=10)
+    assert coarse.midspan_top_sxx_width_mean == pytest.approx(81.27, rel=0.10)
+
+
+def test_coarse_root_peak_von_mises_is_at_least_the_beam_theory_root_bending_stress(coarse):
+    # P L c / I = 10000 x 3000 x 100 / 18455902.2 = 162.55 MPa; the fixed end adds to it.
+    assert coarse.root_peak_von_mises >= 162.55
+
+
 def test_broken_deck_raises_instead_of_returning_results(tmp_path):
     deck = generate_deck(IPE200_CANTILEVER, COARSE).text
     broken = deck.replace("MATERIAL=STEEL", "MATERIAL=UNDEFINED")

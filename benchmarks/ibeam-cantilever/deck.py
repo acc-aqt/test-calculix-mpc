@@ -17,6 +17,8 @@ ROOT_FACE = "ROOT"
 TIP_FACE = "TIPFACE"
 REFERENCE_NODE = "REFNODE"
 WEB_CENTRELINE_TIP_NODE = "WEBTIP"
+MIDSPAN_TOP_FLANGE = "MIDTOP"
+MIDSPAN_BOTTOM_FLANGE = "MIDBOT"
 ALL_ELEMENTS = "EALL"
 
 # C3D20 local nodes as lattice offsets (dx, dy, dz) within one element, in CalculiX order:
@@ -44,16 +46,22 @@ class Deck:
 
 
 def generate_deck(params: BenchmarkParameters, level: MeshLevel) -> Deck:
+    if level.length_divisions % 2:
+        raise ValueError("length_divisions must be even so that x = L/2 falls on a node plane")
     mesh = _Mesh(params, level)
     reference_node = len(mesh.node_ids) + 1
     coupling_element = len(mesh.elements) + 1
     length = params.length
+    midspan = length / 2
+    half_h = params.section.height / 2
 
     node_sets = {
         ROOT_FACE: mesh.nodes_where(lambda x, y, z: x == 0.0),
         TIP_FACE: mesh.nodes_where(lambda x, y, z: x == length),
         WEB_CENTRELINE_TIP_NODE: mesh.nodes_where(lambda x, y, z: (x, y, z) == (length, 0.0, 0.0)),
         REFERENCE_NODE: (reference_node,),
+        MIDSPAN_TOP_FLANGE: mesh.nodes_where(lambda x, y, z: (x, y) == (midspan, half_h)),
+        MIDSPAN_BOTTOM_FLANGE: mesh.nodes_where(lambda x, y, z: (x, y) == (midspan, -half_h)),
     }
     if len(node_sets[WEB_CENTRELINE_TIP_NODE]) != 1:
         raise ValueError("mesh has no node at the tip-face centroid")
@@ -85,6 +93,8 @@ def generate_deck(params: BenchmarkParameters, level: MeshLevel) -> Deck:
         f"{REFERENCE_NODE}, 2, {-params.tip_load!r}",
         "*NODE FILE",
         "U",
+        "*EL FILE",
+        "S",
         f"*NODE PRINT, NSET={REFERENCE_NODE}",
         "U",
         "*END STEP",
