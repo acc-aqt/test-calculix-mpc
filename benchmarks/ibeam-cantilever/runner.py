@@ -2,6 +2,7 @@
 
 import math
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -53,6 +54,11 @@ class BenchmarkResult:
         return _percent_error(self.reference_node_uy, target)
 
     @property
+    def euler_bernoulli_deflection_error(self) -> float:
+        """% error of the reference-node tip deflection against the Euler-Bernoulli deflection."""
+        return _percent_error(self.reference_node_uy, self.analytical.euler_bernoulli_deflection)
+
+    @property
     def midspan_top_stress_error(self) -> float:
         """% error of |midspan_top_sxx_width_mean| against the analytical midspan stress."""
         return _percent_error(self.midspan_top_sxx_width_mean, self.analytical.midspan_stress)
@@ -75,6 +81,16 @@ def find_ccx() -> Path | None:
     else:
         candidate = Path(sys.prefix) / "bin" / "ccx"
     return candidate if candidate.is_file() else None
+
+
+def ccx_version(ccx: Path) -> str:
+    """The version line printed by `ccx -v`, e.g. "Version 2.24". ccx exits 201 here, so the
+    exit code is ignored."""
+    completed = subprocess.run([str(ccx), "-v"], capture_output=True, text=True, check=False)
+    match = re.search(r"Version \S+", completed.stdout)
+    if match is None:
+        raise CcxError(f"could not read the ccx version from `{ccx} -v`:\n{completed.stdout}")
+    return match.group(0)
 
 
 def run_ccx(deck_text: str, job_dir: Path, ccx: Path) -> Path:
