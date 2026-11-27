@@ -270,8 +270,8 @@ def hole_edge_displacement_figure(
     at_a = " → ".join(_signed(level.series.hole_edge_uz[-1], 4) for level in levels)
     return (
         "Nodal out-of-plane displacement u_z along the top-face hole edge from D (θ = 0°) to "
-        "A (θ = 90°), for each mesh level. The plate rests on line EE′ at its outer edge, so "
-        "the pressure pushes the whole hole edge down. u_z is "
+        "A (θ = 90°), for each mesh level. The plate rests on line EE′, at mid-thickness on "
+        "the outer face, so the pressure pushes the whole hole edge down. u_z is "
         f"{at_d} mm at D and {at_a} mm at A ({names})."
     )
 

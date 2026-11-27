@@ -168,7 +168,7 @@ Claude Code session with the `calculix` tools loaded:
 4. `frd_query_set` on the same `.frd` with `inp_path=work/fine/C3D20R/le10.inp`,
    `set=POINTD`, `quantity=stress`, `top_n=1`.
 
-Outcome on the fine C3D20R level (ccx 2.24, 2026-11-27). The server's root was the IPE 200
+Results on the fine C3D20R level (ccx 2.24, 2026-11-27). The server's root was the IPE 200
 folder, so the fine deck and `.frd` from the Python run were copied into an ignored `work/`
 folder below it; the MCP didn't solve the deck itself.
 

@@ -57,7 +57,7 @@ def observed_order(coarse: float, medium: float, fine: float) -> float | None:
 
 
 def richardson_estimate(coarse: float, medium: float, fine: float) -> float | None:
-    """The converged value extrapolated from three levels at refinement ratio 2 with the
+    """The Richardson estimate of σ_yy(D) from three levels at refinement ratio 2 with the
     observed order; None when the order is not available."""
     order = observed_order(coarse, medium, fine)
     if order is None:
@@ -156,7 +156,7 @@ def _target_section(params: BenchmarkParameters) -> list[str]:
         f"| σ_yy(D), published (target) | {_minus(target_stress_at_d())} MPa |",
         "",
         f"Point D is (a_i, 0, +{half:g}) mm: on the hole edge, on the x axis, on the loaded "
-        "face. The value is the NAFEMS LE10 reference as published in four vendor "
+        "face. The value is the published reference value, from four vendor "
         "verification documents that agree on it: the Abaqus Benchmarks Manual, Altair "
         "OptiStruct, Seamplex/Fino case 012 and the COMSOL thick_plate model. The primary "
         "NAFEMS document, TNSB Rev. 3, was not consulted. It is compressive; some sources "
